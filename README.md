@@ -1,129 +1,194 @@
 # nara-notice-collector
 
-A beginner-friendly tool for collecting, classifying, and exporting Korean public procurement notices.
+나라장터 공고를 수집하고, 기본 정보를 정리한 뒤, 공사·물품·용역으로 간단 분류하여 CSV/Excel 파일로 내보내는 도구입니다.
 
-## Why this exists
+이 프로젝트는 나라장터 공고를 매일 직접 검색하고, 필요한 내용을 엑셀에 수작업으로 옮기는 중소기업 실무자를 돕기 위해 만들었습니다.
+API나 개발 경험이 많지 않은 사람도 샘플 데이터를 실행해보고, 점진적으로 나라장터 API 기반 자동화를 시작할 수 있도록 단순한 구조를 목표로 합니다.
 
-Many small-business teams still check Nara procurement notices manually and organize the useful ones in spreadsheets. This project provides a small Node.js CLI that shows the basic automation flow without adding sales recommendation logic.
+---
 
-## Features
+## 왜 만들었나요?
 
-- Load dummy sample notices without an API key
-- Normalize common Nara notice fields
-- Classify notices as construction, goods, service, or unknown by simple title keywords
-- Calculate D-Day from the bid deadline
-- Export a fixed 10-column CSV or Excel file
-- Provide a Nara API client structure for collect mode
+많은 중소기업에서는 아직도 나라장터 공고를 사람이 직접 확인하고, 공고번호·공고명·기관명·마감일·예산·업종제한 같은 정보를 엑셀에 옮겨 정리합니다.
 
-## Requirements
+이 방식은 다음과 같은 문제가 있습니다.
 
-- Node.js 20 or later
-- npm
+* 공고를 하나씩 확인해야 해서 시간이 많이 걸림
+* 반복 작업이 많아 실수가 생기기 쉬움
+* 마감일이 임박한 공고를 놓칠 수 있음
+* 공사·물품·용역 구분을 매번 사람이 직접 확인해야 함
+* 공고 데이터를 다시 활용하기 어려움
 
-## Install
+`nara-notice-collector`는 이런 반복 업무를 줄이기 위해 만든 초보자 친화형 공고 수집/정리 도구입니다.
+
+초기 버전은 고급 추천 시스템이나 영업관리 시스템이 아니라, **공고를 가져오고, 기본 필드를 정리하고, 검토하기 쉬운 CSV/Excel 파일을 만드는 것**에 집중합니다.
+
+---
+
+## 주요 기능
+
+현재 이 프로젝트가 목표로 하는 기능은 다음과 같습니다.
+
+* 나라장터 공고 데이터 수집 구조 제공
+* 샘플 공고 데이터 실행 지원
+* 공고번호, 공고명, 기관명, 지역, 예산, 마감일, 업종제한 정리
+* 공고명을 기준으로 공사·물품·용역·미분류 기본 구분
+* 마감일 기준 D-Day 계산
+* 실무 검토용 CSV 파일 생성
+* 실무 검토용 Excel 파일 생성
+* 초보자도 따라 할 수 있는 한국어 문서 제공
+
+---
+
+## 최종 출력 컬럼
+
+CSV/Excel 파일은 아래 컬럼 순서로 생성됩니다.
+
+| 컬럼 | 설명 |
+| --- | --- |
+| D-Day | 마감일까지 남은 기간 |
+| 공고번호 | 나라장터 공고번호 |
+| 공고명 | 공고 제목 |
+| 구분 | 공사 / 물품 / 용역 / 미분류 |
+| 기관명 | 공고기관명 |
+| 지역 | 공고 지역 |
+| 예산 | 추정가격 또는 예산 |
+| 마감일 | 입찰 마감일 |
+| 업종제한 | 업종제한 여부 또는 관련 정보 |
+| 원문링크 | 공고 원문 URL |
+
+---
+
+## 사용 대상
+
+이 도구는 특히 아래와 같은 사용자를 대상으로 합니다.
+
+* 나라장터 공고를 매일 확인하는 중소기업 실무자
+* 공공조달 입찰 정보를 엑셀로 정리하는 담당자
+* API 사용 경험은 적지만 반복 업무를 자동화하고 싶은 사용자
+* 개발자는 아니지만 간단한 명령어 실행으로 업무 시간을 줄이고 싶은 사용자
+* 공고 데이터를 CSV/Excel 형태로 정리해 내부 검토 자료로 활용하고 싶은 사용자
+
+---
+
+## 설치 요구사항
+
+아래 프로그램이 필요합니다.
+
+* Node.js 20 이상
+* npm
+
+Node.js가 설치되어 있지 않다면 먼저 Node.js 공식 사이트에서 LTS 버전을 설치하세요.
+
+---
+
+## 개발 환경 실행
+
+패키지를 설치합니다.
 
 ```bash
 npm install
 ```
 
-## Run sample data
-
-Excel:
+타입 검사를 실행합니다.
 
 ```bash
-npm run sample -- --format xlsx --output ./output/sample-notices.xlsx
+npm run typecheck
 ```
 
-CSV:
+테스트를 실행합니다.
+
+```bash
+npm test
+```
+
+---
+
+## 샘플 데이터 실행
+
+API 키가 없어도 샘플 데이터로 먼저 실행해볼 수 있습니다.
+
+CSV 파일로 내보내기:
 
 ```bash
 npm run sample -- --format csv --output ./output/sample-notices.csv
 ```
 
-After publishing, the CLI shape is:
+Excel 파일로 내보내기:
 
 ```bash
-npx nara-notice-collector sample --format xlsx --output ./output/sample-notices.xlsx
-npx nara-notice-collector sample --format csv --output ./output/sample-notices.csv
+npm run sample -- --format xlsx --output ./output/sample-notices.xlsx
 ```
 
-## Collect from Nara API
+실행 후 `output` 폴더에서 생성된 파일을 확인할 수 있습니다.
 
-Sample mode does not require an API key.
+---
 
-Collect mode requires:
+## 나라장터 API 사용
+
+실제 나라장터 공고를 수집하려면 공공데이터포털에서 나라장터 관련 API 활용 신청을 하고 API 키를 발급받아야 합니다.
+
+환경변수 예시는 다음과 같습니다.
+
+```bash
+NARA_API_KEY=발급받은_API_키
+```
+
+API 키 설정 방법은 아래 문서에서 자세히 설명합니다.
 
 ```text
-NARA_API_KEY=사용자_나라장터_API_키
+docs/nara-api-key-ko.md
 ```
 
-Example:
+---
 
-```bash
-npx nara-notice-collector collect \
-  --from 2026-05-01 \
-  --to 2026-05-31 \
-  --keyword 자동제어 \
-  --format xlsx \
-  --output ./output/notices.xlsx
-```
+## 공사·물품·용역 분류 기준
 
-See [docs/nara-api-key-ko.md](docs/nara-api-key-ko.md) for the Korean setup guide.
+초기 버전에서는 공고명을 기준으로 단순 키워드 분류를 수행합니다.
 
-## Output columns
+예를 들어:
 
-The CSV and Excel output always uses these 10 columns in this order:
+* `공사`, `개축`, `증축`, `신축`, `보수`, `리모델링` 등이 포함되면 공사로 분류
+* `구매`, `제조`, `납품`, `물품`, `장비`, `기자재` 등이 포함되면 물품으로 분류
+* `용역`, `설계`, `감리`, `조사`, `점검`, `유지관리` 등이 포함되면 용역으로 분류
+* 명확하지 않은 경우 미분류로 남김
 
-```text
-D-Day
-공고번호
-공고명
-구분
-기관명
-지역
-예산
-마감일
-업종제한
-원문링크
-```
+이 분류는 실무 검토를 돕기 위한 기본 분류이며, 법적 판단이나 최종 입찰 검토를 대체하지 않습니다.
 
-Sample outputs are included at:
+---
 
-- [examples/sample-output.csv](examples/sample-output.csv)
-- [examples/sample-output.xlsx](examples/sample-output.xlsx)
+## D-Day 계산 기준
 
-## Classification rules
+입찰 마감일을 기준으로 D-Day를 계산합니다.
 
-The first release uses simple title-keyword matching only.
+표시 예시는 다음과 같습니다.
 
-- construction: 공사, 개축, 증축, 신축, 보수, 리모델링, 전기공사, 기계설비공사, 정보통신공사
-- goods: 구매, 제조, 납품, 물품, 장비, 기자재, 자재, 시스템 구입
-- service: 용역, 설계, 감리, 조사, 점검, 유지관리, 위탁, 진단, 컨설팅
+| 표시 | 의미 |
+| --- | --- |
+| D-Day | 오늘 마감 |
+| D-1 | 하루 뒤 마감 |
+| D-7 | 7일 뒤 마감 |
+| D+1 | 하루 전 마감 |
+| 확인필요 | 마감일이 없거나 날짜를 해석할 수 없음 |
 
-Priority is construction, goods, service, then unknown.
+---
 
-## D-Day rules
+## 프로젝트 범위
 
-- Deadline today: `D-Day`
-- Deadline tomorrow: `D-1`
-- Deadline seven days later: `D-7`
-- Deadline yesterday: `D+1`
-- Missing or invalid deadline: `확인필요`
+이 프로젝트는 나라장터 공고의 **수집, 기본 분류, D-Day 계산, CSV/Excel 내보내기**에 집중합니다.
 
-Date calculations are performed by calendar day, not by hour.
+아래 기능은 의도적으로 포함하지 않습니다.
 
-## Development
+* 고도화된 프로젝트명 추출
+* 연관공고 자동 매칭
+* 공고 간 유사도 점수 계산
+* 영업기회 추천
+* 고객별 숨김/추천 정책
+* 영업 담당자 배정, 메모, 진행상태 관리
+* LLM 기반 판단 로직
+* 내부 업무 시스템 전용 기능
 
-```bash
-npm run typecheck
-npm test
-```
-
-## Documentation
-
-- [Getting started in Korean](docs/getting-started-ko.md)
-- [Nara API key setup in Korean](docs/nara-api-key-ko.md)
-- [Notice field guide in Korean](docs/notice-fields-ko.md)
+이 프로젝트는 복잡한 영업관리 시스템이 아니라, 공공조달 공고 데이터를 처음 자동화하려는 사용자를 위한 기초 도구입니다.
 
 ## Out of scope
 
@@ -131,6 +196,39 @@ This project focuses on public procurement notice collection, basic classificati
 
 Advanced project identity resolution, related-notice matching, sales opportunity scoring, private customer workflows, and LLM-based business decision logic are intentionally out of scope.
 
-## Contributing
+---
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+## 개발 방향
+
+초기 목표는 다음과 같습니다.
+
+1. 샘플 데이터로 공고 정리 흐름을 확인할 수 있게 만들기
+2. 나라장터 API 키를 연결해 실제 공고 수집 구조 제공
+3. 공고를 공사·물품·용역·미분류로 간단 구분
+4. 마감일 기준 D-Day를 계산
+5. 실무자가 바로 열어볼 수 있는 CSV/Excel 파일 생성
+6. 초보자도 따라 할 수 있는 한국어 문서 제공
+
+향후에는 사용자가 더 쉽게 실행할 수 있도록 Windows 실행 가이드, API 오류 해결 문서, Excel 출력 개선 등을 추가할 수 있습니다.
+
+---
+
+## 기여하기
+
+이 프로젝트는 API와 자동화에 익숙하지 않은 실무자도 사용할 수 있는 단순한 도구를 목표로 합니다.
+
+기여 시에는 아래 방향을 지켜주세요.
+
+* 초보자가 이해하기 쉬운 코드와 문서 유지
+* 실제 고객 데이터나 민감정보 포함 금지
+* 나라장터 공고 수집·정리 범위에 집중
+* 고급 영업기회 추천이나 내부 업무 시스템 기능은 제외
+* 테스트 가능한 작은 단위로 기능 추가
+
+자세한 내용은 `CONTRIBUTING.md`를 참고하세요.
+
+---
+
+## 라이선스
+
+MIT License를 사용합니다.
