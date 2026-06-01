@@ -1,0 +1,233 @@
+[
+  {
+    "bidNtceNo": "20260500001",
+    "bidNtceNm": "OO초등학교 그린스마트스쿨 개축공사",
+    "ntceInsttNm": "OO교육지원청",
+    "presmptPrce": "1200000000",
+    "bidClseDt": "2026-06-03 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "건축공사업",
+    "regionNm": "서울특별시",
+    "sourceUrl": "https://example.com/notices/20260500001"
+  },
+  {
+    "bidNtceNo": "20260500002",
+    "bidNtceNm": "자동제어 장비 구매",
+    "ntceInsttNm": "OO시청",
+    "presmptPrce": "85000000",
+    "bidClseDt": "2026-06-01 14:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "경기도",
+    "sourceUrl": "https://example.com/notices/20260500002"
+  },
+  {
+    "bidNtceNo": "20260500003",
+    "bidNtceNm": "전기설비 정기점검 용역",
+    "ntceInsttNm": "OO시설관리공단",
+    "presmptPrce": "42000000",
+    "bidClseDt": "2026-06-02 09:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "전기안전관리",
+    "regionNm": "인천광역시",
+    "sourceUrl": "https://example.com/notices/20260500003"
+  },
+  {
+    "bidNtceNo": "20260500004",
+    "bidNtceNm": "스마트시티 플랫폼 구축",
+    "ntceInsttNm": "OO정보산업진흥원",
+    "bidClseDt": "2026-06-10 16:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "부산광역시",
+    "sourceUrl": "https://example.com/notices/20260500004"
+  },
+  {
+    "bidNtceNo": "20260500005",
+    "bidNtceNm": "청사 옥상 방수 보수공사",
+    "ntceInsttNm": "OO구청",
+    "presmptPrce": "210000000",
+    "bidClseDt": "2026-05-31 11:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "시설물유지관리업",
+    "regionNm": "대전광역시",
+    "sourceUrl": "https://example.com/notices/20260500005"
+  },
+  {
+    "bidNtceNo": "20260500006",
+    "bidNtceNm": "실험실 기자재 납품",
+    "ntceInsttNm": "OO대학교",
+    "presmptPrce": "63000000",
+    "bidClseDt": "2026-06-07 10:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "광주광역시",
+    "sourceUrl": "https://example.com/notices/20260500006"
+  },
+  {
+    "bidNtceNo": "20260500007",
+    "bidNtceNm": "하수관로 정밀조사 용역",
+    "ntceInsttNm": "OO상하수도사업소",
+    "presmptPrce": "99000000",
+    "bidClseDt": "2026-06-08 15:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "엔지니어링사업",
+    "regionNm": "대구광역시",
+    "sourceUrl": "https://example.com/notices/20260500007"
+  },
+  {
+    "bidNtceNo": "20260500008",
+    "bidNtceNm": "공공도서관 리모델링 전기공사",
+    "ntceInsttNm": "OO문화재단",
+    "presmptPrce": "340000000",
+    "bidClseDt": "2026-06-05 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "전기공사업",
+    "regionNm": "울산광역시",
+    "sourceUrl": "https://example.com/notices/20260500008"
+  },
+  {
+    "bidNtceNo": "20260500009",
+    "bidNtceNm": "급식실 식기세척기 구입",
+    "ntceInsttNm": "OO고등학교",
+    "presmptPrce": "18000000",
+    "bidClseDt": "2026-06-04 13:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "세종특별자치시",
+    "sourceUrl": "https://example.com/notices/20260500009"
+  },
+  {
+    "bidNtceNo": "20260500010",
+    "bidNtceNm": "공공시설 위탁운영 용역",
+    "ntceInsttNm": "OO도시공사",
+    "presmptPrce": "150000000",
+    "bidClseDt": "2026-06-12 17:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "공공시설관리",
+    "regionNm": "강원특별자치도",
+    "sourceUrl": "https://example.com/notices/20260500010"
+  },
+  {
+    "bidNtceNo": "20260500011",
+    "bidNtceNm": "체육관 증축공사",
+    "ntceInsttNm": "OO중학교",
+    "presmptPrce": "980000000",
+    "bidClseDt": "2026-06-15 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "건축공사업",
+    "regionNm": "충청북도",
+    "sourceUrl": "https://example.com/notices/20260500011"
+  },
+  {
+    "bidNtceNo": "20260500012",
+    "bidNtceNm": "민원실 안내 키오스크 제조",
+    "ntceInsttNm": "OO군청",
+    "presmptPrce": "72000000",
+    "bidClseDt": "2026-05-30 10:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "충청남도",
+    "sourceUrl": "https://example.com/notices/20260500012"
+  },
+  {
+    "bidNtceNo": "20260500013",
+    "bidNtceNm": "교통영향평가 컨설팅",
+    "ntceInsttNm": "OO개발공사",
+    "presmptPrce": "54000000",
+    "bidClseDt": "2026-06-20 11:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "교통영향평가대행자",
+    "regionNm": "전라북도",
+    "sourceUrl": "https://example.com/notices/20260500013"
+  },
+  {
+    "bidNtceNo": "20260500014",
+    "bidNtceNm": "청년지원사업 운영",
+    "ntceInsttNm": "OO청년센터",
+    "bidClseDt": "2026-06-18 14:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "전라남도",
+    "sourceUrl": "https://example.com/notices/20260500014"
+  },
+  {
+    "bidNtceNo": "20260500015",
+    "bidNtceNm": "도로 포장 보수공사",
+    "ntceInsttNm": "OO도로관리사업소",
+    "presmptPrce": "450000000",
+    "bidClseDt": "2026-06-06 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "포장공사업",
+    "regionNm": "경상북도",
+    "sourceUrl": "https://example.com/notices/20260500015"
+  },
+  {
+    "bidNtceNo": "20260500016",
+    "bidNtceNm": "방범용 CCTV 장비 납품",
+    "ntceInsttNm": "OO경찰서",
+    "presmptPrce": "115000000",
+    "bidClseDt": "2026-06-09 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "정보통신공사업",
+    "regionNm": "경상남도",
+    "sourceUrl": "https://example.com/notices/20260500016"
+  },
+  {
+    "bidNtceNo": "20260500017",
+    "bidNtceNm": "건축물 안전진단 용역",
+    "ntceInsttNm": "OO안전센터",
+    "presmptPrce": "76000000",
+    "bidClseDt": "2026-06-11 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "안전진단전문기관",
+    "regionNm": "제주특별자치도",
+    "sourceUrl": "https://example.com/notices/20260500017"
+  },
+  {
+    "bidNtceNo": "20260500018",
+    "bidNtceNm": "마을회관 신축공사",
+    "ntceInsttNm": "OO면사무소",
+    "presmptPrce": "680000000",
+    "bidClseDt": "2026-05-29 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "건축공사업",
+    "regionNm": "경기도",
+    "sourceUrl": "https://example.com/notices/20260500018"
+  },
+  {
+    "bidNtceNo": "20260500019",
+    "bidNtceNm": "교육용 태블릿 물품 구매",
+    "ntceInsttNm": "OO교육청",
+    "presmptPrce": "132000000",
+    "bidClseDt": "2026-06-13 10:00:00",
+    "indstrytyLmtYn": "N",
+    "regionNm": "서울특별시",
+    "sourceUrl": "https://example.com/notices/20260500019"
+  },
+  {
+    "bidNtceNo": "20260500020",
+    "bidNtceNm": "공원 수목 유지관리",
+    "ntceInsttNm": "OO공원녹지사업소",
+    "presmptPrce": "88000000",
+    "bidClseDt": "2026-06-14 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "조경식재공사업",
+    "regionNm": "부산광역시",
+    "sourceUrl": "https://example.com/notices/20260500020"
+  },
+  {
+    "bidNtceNo": "20260500021",
+    "bidNtceNm": "지역문화 행사 운영 지원",
+    "ntceInsttNm": "OO문화원",
+    "bidClseDt": "",
+    "indstrytyLmtYn": "N",
+    "regionNm": "대전광역시",
+    "sourceUrl": "https://example.com/notices/20260500021"
+  },
+  {
+    "bidNtceNo": "20260500022",
+    "bidNtceNm": "기계설비공사 감리 용역",
+    "ntceInsttNm": "OO공공건축센터",
+    "presmptPrce": "57000000",
+    "bidClseDt": "2026-06-16 10:00:00",
+    "indstrytyLmtYn": "Y",
+    "indstrytyLmtNm": "건설엔지니어링업",
+    "regionNm": "인천광역시",
+    "sourceUrl": "https://example.com/notices/20260500022"
+  }
+]
