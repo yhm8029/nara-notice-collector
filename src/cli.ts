@@ -5,6 +5,7 @@ import { dirname, extname } from "node:path";
 import { pathToFileURL } from "node:url";
 import { exportNoticesToCsv } from "./export/csv-exporter.js";
 import { exportNoticesToExcel } from "./export/excel-exporter.js";
+import { createNaraClientFromEnv } from "./nara/client.js";
 import { loadSampleRawNotices } from "./nara/sample-client.js";
 import { normalizeNotices } from "./normalize/notice-normalizer.js";
 
@@ -79,10 +80,21 @@ async function runCollectCommand(
     );
   }
 
+  const client = createNaraClientFromEnv(env);
+  const rawNotices = await client.searchNotices({
+    from: String(options.from),
+    to: String(options.to),
+    keyword
+  });
+  const notices = normalizeNotices(rawNotices);
   await ensureOutputDirectory(output);
-  throw new Error(
-    `Nara API collection is prepared for ${format} output${keyword ? ` with keyword "${keyword}"` : ""}, but the API client is implemented in the next step.`
-  );
+
+  if (format === "csv") {
+    await writeFile(output, exportNoticesToCsv(notices), "utf8");
+    return;
+  }
+
+  await exportNoticesToExcel(notices, output);
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
