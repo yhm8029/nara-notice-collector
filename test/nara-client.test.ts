@@ -50,10 +50,57 @@ describe("NaraApiClient", () => {
     expect(requestedUrls[1]).toContain("getBidPblancListInfoServcPPSSrch");
     expect(requestedUrls[2]).toContain("getBidPblancListInfoThngPPSSrch");
     expect(requestedUrls[3]).toContain("getBidPblancListInfoFrgcptPPSSrch");
-    expect(requestedUrls[0]).toContain("serviceKey=sample-key");
-    expect(requestedUrls[0]).toContain("inqryBgnDt=20260501");
-    expect(requestedUrls[0]).toContain("inqryEndDt=20260531");
+    expect(requestedUrls[0]).toContain("ServiceKey=sample-key");
+    expect(requestedUrls[0]).toContain("inqryDiv=1");
+    expect(requestedUrls[0]).toContain("inqryBgnDt=202605010000");
+    expect(requestedUrls[0]).toContain("inqryEndDt=202605312359");
     expect(decodeURIComponent(requestedUrls[0] ?? "")).toContain("bidNtceNm=행정복지센터");
+  });
+
+  it("throws the public data API result message when the API returns an error code", async () => {
+    const client = new NaraApiClient({
+      apiKey: "sample-key",
+      endpoints: [{ url: "https://example.com/api", noticeType: "goods" }],
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            response: {
+              header: {
+                resultCode: "08",
+                resultMsg: "필수값 입력 에러"
+              },
+              body: { items: [] }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+    });
+
+    await expect(client.searchNotices({ from: "2026-05-01", to: "2026-05-31" })).rejects.toThrow(
+      /필수값 입력 에러/
+    );
+  });
+
+  it("treats the public data no-data result as an empty notice list", async () => {
+    const client = new NaraApiClient({
+      apiKey: "sample-key",
+      endpoints: [{ url: "https://example.com/api", noticeType: "goods" }],
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            response: {
+              header: {
+                resultCode: "03",
+                resultMsg: "No Data"
+              },
+              body: { items: [] }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+    });
+
+    await expect(client.searchNotices({ from: "2026-05-01", to: "2026-05-31" })).resolves.toEqual([]);
   });
 
   it("deduplicates notices by notice id", async () => {

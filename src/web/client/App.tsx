@@ -87,13 +87,15 @@ export function App() {
     setLoading("collect");
     setError("");
     try {
-      applyPayload(
-        await fetchJson<NoticePayload>("/api/collect", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ from, to, keyword, apiKey })
-        })
-      );
+      const payload = await fetchJson<NoticePayload>("/api/collect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ from, to, keyword, apiKey })
+      });
+      applyPayload(payload);
+      if (payload.rows.length === 0) {
+        setError("수집 결과가 없습니다. 조회 기간, 키워드, API 활용 승인 상태를 확인하세요.");
+      }
     } catch (error) {
       setError(toErrorMessage(error));
     } finally {

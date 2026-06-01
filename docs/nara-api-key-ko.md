@@ -11,6 +11,7 @@
 ## 2. API 키 확인
 
 활용 신청이 승인되면 공공데이터포털 마이페이지에서 일반 인증키를 확인할 수 있습니다.
+로컬 웹이나 PowerShell에는 일반 인증키(Decoding)를 넣는 것을 권장합니다. Encoding 키를 그대로 넣으면 요청 과정에서 중복 인코딩될 수 있습니다.
 
 이 프로젝트는 환경변수 이름을 `NARA_API_KEY`로 사용합니다.
 
@@ -35,11 +36,17 @@ npx nara-notice-collector collect \
 
 ## 5. API endpoint
 
-기본 client는 공공데이터포털 나라장터 입찰공고 목록 조회 API 형태를 사용하도록 구성되어 있습니다.
+기본 client는 공공데이터포털 나라장터 입찰공고정보서비스의 업무별 조회 API를 호출합니다.
 
 ```text
+https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoCnstwkPPSSrch
 https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoServcPPSSrch
+https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoThngPPSSrch
+https://apis.data.go.kr/1230000/ad/BidPublicInfoService/getBidPblancListInfoFrgcptPPSSrch
 ```
+
+조회구분은 등록일시 기준 `inqryDiv=1`을 사용하고, 날짜는 `YYYYMMDDHHMM` 형식으로 보냅니다.
+예를 들어 `2026-05-01`부터 `2026-05-31`까지 조회하면 `202605010000`부터 `202605312359`까지 요청합니다.
 
 실제 공공데이터포털 서비스명과 endpoint는 신청한 API 상품에 따라 달라질 수 있으므로, 필요하면 `src/nara/client.ts`의 endpoint 설정을 조정합니다.
 
