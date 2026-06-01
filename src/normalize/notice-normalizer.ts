@@ -1,4 +1,5 @@
 import type { NormalizedNotice, RawNaraNotice } from "../nara/types.js";
+import { classifyNoticeType } from "../classify/notice-type-classifier.js";
 import {
   normalizeDate,
   normalizeIndustryRestriction,
@@ -7,11 +8,13 @@ import {
 } from "./field-normalizer.js";
 
 export function normalizeNotice(raw: RawNaraNotice): NormalizedNotice {
+  const title = normalizeText(raw.bidNtceNm) ?? "";
+
   return {
     dDay: "확인필요",
     noticeId: normalizeText(raw.bidNtceNo) ?? "",
-    title: normalizeText(raw.bidNtceNm) ?? "",
-    noticeType: "unknown",
+    title,
+    noticeType: classifyNoticeType(title),
     agency: normalizeText(raw.ntceInsttNm) ?? "",
     region: normalizeText(raw.regionNm),
     budget: normalizeMoney(raw.presmptPrce ?? raw.asignBdgtAmt),
