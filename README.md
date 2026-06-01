@@ -27,6 +27,18 @@ npm run typecheck
 npm test
 ```
 
+## Nara API key
+
+Sample mode does not require an API key.
+
+Collect mode requires:
+
+```text
+NARA_API_KEY=사용자_나라장터_API_키
+```
+
+See [docs/nara-api-key-ko.md](docs/nara-api-key-ko.md) for the Korean setup guide.
+
 ## Out of scope
 
 This project focuses on public procurement notice collection, basic classification, D-Day calculation, and CSV/Excel export.
