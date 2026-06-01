@@ -80,17 +80,20 @@ describe("field normalizer", () => {
 
 describe("notice normalizer", () => {
   it("maps Nara raw fields into normalized notice fields", () => {
-    const notice = normalizeNotice({
-      bidNtceNo: " 20260500001 ",
-      bidNtceNm: " OO초등학교 그린스마트스쿨 개축공사 ",
-      ntceInsttNm: " OO교육지원청 ",
-      presmptPrce: "1,200,000,000",
-      bidClseDt: "2026-05-31 10:00:00",
-      indstrytyLmtYn: "Y",
-      indstrytyLmtNm: "건축공사업",
-      regionNm: " 서울특별시 ",
-      sourceUrl: " https://example.com/notices/20260500001 "
-    });
+    const notice = normalizeNotice(
+      {
+        bidNtceNo: " 20260500001 ",
+        bidNtceNm: " OO초등학교 그린스마트스쿨 개축공사 ",
+        ntceInsttNm: " OO교육지원청 ",
+        presmptPrce: "1,200,000,000",
+        bidClseDt: "2026-05-31 10:00:00",
+        indstrytyLmtYn: "Y",
+        indstrytyLmtNm: "건축공사업",
+        regionNm: " 서울특별시 ",
+        sourceUrl: " https://example.com/notices/20260500001 "
+      },
+      { baseDate: new Date("2026-05-31") }
+    );
 
     expect(notice).toMatchObject({
       noticeId: "20260500001",
@@ -101,7 +104,7 @@ describe("notice normalizer", () => {
       deadline: "2026-05-31T10:00:00",
       industryRestriction: "건축공사업",
       sourceUrl: "https://example.com/notices/20260500001",
-      dDay: "확인필요",
+      dDay: "D-Day",
       noticeType: "construction"
     });
     expect(notice.raw?.bidNtceNo).toBe(" 20260500001 ");
