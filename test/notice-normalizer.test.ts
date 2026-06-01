@@ -83,6 +83,7 @@ describe("notice normalizer", () => {
       {
         bidNtceNo: " 20260500001 ",
         bidNtceNm: " OO초등학교 그린스마트스쿨 개축공사 ",
+        bsnsDivNm: "공사",
         ntceInsttNm: " OO교육지원청 ",
         presmptPrce: "1,200,000,000",
         bidClseDt: "2026-05-31 10:00:00",

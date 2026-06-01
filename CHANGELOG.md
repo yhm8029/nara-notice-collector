@@ -5,6 +5,11 @@
 ### Added
 
 - Local web UI notice document button with configurable Synap viewer URL template
+- API business-division based notice type classification using Nara bid notice endpoints
+
+### Changed
+
+- Removed title keyword based notice type classification
 
 ## v0.3.0
 

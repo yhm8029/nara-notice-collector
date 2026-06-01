@@ -18,7 +18,7 @@ export function normalizeNotice(raw: RawNaraNotice, options: NormalizeNoticeOpti
   return {
     noticeId: normalizeText(raw.bidNtceNo) ?? "",
     title,
-    noticeType: classifyNoticeType(title),
+    noticeType: classifyNoticeType(raw),
     agency: normalizeText(raw.ntceInsttNm) ?? "",
     region: normalizeText(raw.regionNm),
     budget: normalizeMoney(raw.presmptPrce ?? raw.asignBdgtAmt),

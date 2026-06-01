@@ -8,7 +8,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "건축공사업",
     "regionNm": "서울특별시",
-    "sourceUrl": "https://example.com/notices/20260500001"
+    "sourceUrl": "https://example.com/notices/20260500001",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500002",
@@ -18,7 +19,8 @@
     "bidClseDt": "2026-06-01 14:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "경기도",
-    "sourceUrl": "https://example.com/notices/20260500002"
+    "sourceUrl": "https://example.com/notices/20260500002",
+    "bsnsDivNm": "물품"
   },
   {
     "bidNtceNo": "20260500003",
@@ -29,7 +31,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "전기안전관리",
     "regionNm": "인천광역시",
-    "sourceUrl": "https://example.com/notices/20260500003"
+    "sourceUrl": "https://example.com/notices/20260500003",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500004",
@@ -38,7 +41,8 @@
     "bidClseDt": "2026-06-10 16:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "부산광역시",
-    "sourceUrl": "https://example.com/notices/20260500004"
+    "sourceUrl": "https://example.com/notices/20260500004",
+    "bsnsDivNm": "내자"
   },
   {
     "bidNtceNo": "20260500005",
@@ -49,7 +53,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "시설물유지관리업",
     "regionNm": "대전광역시",
-    "sourceUrl": "https://example.com/notices/20260500005"
+    "sourceUrl": "https://example.com/notices/20260500005",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500006",
@@ -59,7 +64,8 @@
     "bidClseDt": "2026-06-07 10:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "광주광역시",
-    "sourceUrl": "https://example.com/notices/20260500006"
+    "sourceUrl": "https://example.com/notices/20260500006",
+    "bsnsDivNm": "물품"
   },
   {
     "bidNtceNo": "20260500007",
@@ -70,7 +76,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "엔지니어링사업",
     "regionNm": "대구광역시",
-    "sourceUrl": "https://example.com/notices/20260500007"
+    "sourceUrl": "https://example.com/notices/20260500007",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500008",
@@ -81,7 +88,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "전기공사업",
     "regionNm": "울산광역시",
-    "sourceUrl": "https://example.com/notices/20260500008"
+    "sourceUrl": "https://example.com/notices/20260500008",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500009",
@@ -91,7 +99,8 @@
     "bidClseDt": "2026-06-04 13:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "세종특별자치시",
-    "sourceUrl": "https://example.com/notices/20260500009"
+    "sourceUrl": "https://example.com/notices/20260500009",
+    "bsnsDivNm": "내자"
   },
   {
     "bidNtceNo": "20260500010",
@@ -102,7 +111,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "공공시설관리",
     "regionNm": "강원특별자치도",
-    "sourceUrl": "https://example.com/notices/20260500010"
+    "sourceUrl": "https://example.com/notices/20260500010",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500011",
@@ -113,7 +123,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "건축공사업",
     "regionNm": "충청북도",
-    "sourceUrl": "https://example.com/notices/20260500011"
+    "sourceUrl": "https://example.com/notices/20260500011",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500012",
@@ -123,7 +134,8 @@
     "bidClseDt": "2026-05-30 10:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "충청남도",
-    "sourceUrl": "https://example.com/notices/20260500012"
+    "sourceUrl": "https://example.com/notices/20260500012",
+    "bsnsDivNm": "물품"
   },
   {
     "bidNtceNo": "20260500013",
@@ -134,7 +146,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "교통영향평가대행자",
     "regionNm": "전라북도",
-    "sourceUrl": "https://example.com/notices/20260500013"
+    "sourceUrl": "https://example.com/notices/20260500013",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500014",
@@ -143,7 +156,8 @@
     "bidClseDt": "2026-06-18 14:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "전라남도",
-    "sourceUrl": "https://example.com/notices/20260500014"
+    "sourceUrl": "https://example.com/notices/20260500014",
+    "bsnsDivNm": "내자"
   },
   {
     "bidNtceNo": "20260500015",
@@ -154,7 +168,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "포장공사업",
     "regionNm": "경상북도",
-    "sourceUrl": "https://example.com/notices/20260500015"
+    "sourceUrl": "https://example.com/notices/20260500015",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500016",
@@ -165,7 +180,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "정보통신공사업",
     "regionNm": "경상남도",
-    "sourceUrl": "https://example.com/notices/20260500016"
+    "sourceUrl": "https://example.com/notices/20260500016",
+    "bsnsDivNm": "물품"
   },
   {
     "bidNtceNo": "20260500017",
@@ -176,7 +192,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "안전진단전문기관",
     "regionNm": "제주특별자치도",
-    "sourceUrl": "https://example.com/notices/20260500017"
+    "sourceUrl": "https://example.com/notices/20260500017",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500018",
@@ -187,7 +204,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "건축공사업",
     "regionNm": "경기도",
-    "sourceUrl": "https://example.com/notices/20260500018"
+    "sourceUrl": "https://example.com/notices/20260500018",
+    "bsnsDivNm": "공사"
   },
   {
     "bidNtceNo": "20260500019",
@@ -197,7 +215,8 @@
     "bidClseDt": "2026-06-13 10:00:00",
     "indstrytyLmtYn": "N",
     "regionNm": "서울특별시",
-    "sourceUrl": "https://example.com/notices/20260500019"
+    "sourceUrl": "https://example.com/notices/20260500019",
+    "bsnsDivNm": "물품"
   },
   {
     "bidNtceNo": "20260500020",
@@ -208,7 +227,8 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "조경식재공사업",
     "regionNm": "부산광역시",
-    "sourceUrl": "https://example.com/notices/20260500020"
+    "sourceUrl": "https://example.com/notices/20260500020",
+    "bsnsDivNm": "용역"
   },
   {
     "bidNtceNo": "20260500021",
@@ -217,7 +237,8 @@
     "bidClseDt": "",
     "indstrytyLmtYn": "N",
     "regionNm": "대전광역시",
-    "sourceUrl": "https://example.com/notices/20260500021"
+    "sourceUrl": "https://example.com/notices/20260500021",
+    "bsnsDivNm": "내자"
   },
   {
     "bidNtceNo": "20260500022",
@@ -228,6 +249,7 @@
     "indstrytyLmtYn": "Y",
     "indstrytyLmtNm": "건설엔지니어링업",
     "regionNm": "인천광역시",
-    "sourceUrl": "https://example.com/notices/20260500022"
+    "sourceUrl": "https://example.com/notices/20260500022",
+    "bsnsDivNm": "공사"
   }
 ]
