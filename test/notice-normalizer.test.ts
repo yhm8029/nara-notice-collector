@@ -70,8 +70,10 @@ describe("field normalizer", () => {
     expect(normalizeMoney("금액미정")).toBeUndefined();
   });
 
-  it("normalizes supported date strings into ISO-like text", () => {
-    expect(normalizeDate("2026-05-31 10:00:00")).toBe("2026-05-31T10:00:00");
+  it("normalizes supported date strings into Korean KST display text", () => {
+    expect(normalizeDate("2026-05-31 10:00:00")).toBe("2026-05-31 오전 10:00");
+    expect(normalizeDate("2026-05-31 13:05:00")).toBe("2026-05-31 오후 1:05");
+    expect(normalizeDate("2026-05-31T01:00:00Z")).toBe("2026-05-31 오전 10:00");
     expect(normalizeDate("2026-05-31")).toBe("2026-05-31");
     expect(normalizeDate("not a date")).toBeUndefined();
   });
@@ -101,7 +103,7 @@ describe("notice normalizer", () => {
       agency: "OO교육지원청",
       region: "서울특별시",
       budget: 1200000000,
-      deadline: "2026-05-31T10:00:00",
+      deadline: "2026-05-31 오전 10:00",
       industryRestriction: "건축공사업",
       sourceUrl: "https://example.com/notices/20260500001",
       noticeType: "construction"
