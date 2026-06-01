@@ -22,7 +22,7 @@ describe("Excel exporter", () => {
             agency: "OO교육지원청",
             region: "서울특별시",
             budget: 1200000000,
-            deadline: "2026-06-01T10:00:00",
+            deadline: "2026-06-01 오전 10:00",
             industryRestriction: "건축공사업",
             sourceUrl: "https://example.com/notices/20260500001"
           } satisfies NormalizedNotice

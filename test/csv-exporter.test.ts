@@ -21,7 +21,7 @@ describe("CSV exporter", () => {
       "기관명": "OO시청",
       "지역": "서울특별시",
       "예산": 1000,
-      "마감일": "2026-06-01T10:00:00",
+      "마감일": "2026-06-01 오전 10:00",
       "업종제한": "",
       "원문링크": "https://example.com/B"
     });
@@ -58,7 +58,7 @@ function notice(overrides: Partial<NormalizedNotice> = {}): NormalizedNotice {
     agency: "OO시청",
     region: "서울특별시",
     budget: 1000,
-    deadline: "2026-06-01T10:00:00",
+    deadline: "2026-06-01 오전 10:00",
     sourceUrl: `https://example.com/${noticeId}`,
     ...overrides
   };
