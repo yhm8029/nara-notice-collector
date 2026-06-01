@@ -16,7 +16,6 @@ describe("Excel exporter", () => {
       await exportNoticesToExcel(
         [
           {
-            dDay: "D-Day",
             noticeId: "20260500001",
             title: "OO초등학교 개축공사",
             noticeType: "construction",
@@ -33,7 +32,7 @@ describe("Excel exporter", () => {
 
       const rows = await readSheet(output, "notices");
       expect(rows[0]).toEqual(EXPORT_COLUMNS);
-      expect(rows[1]?.slice(0, 4)).toEqual(["D-Day", "20260500001", "OO초등학교 개축공사", "공사"]);
+      expect(rows[1]?.slice(0, 4)).toEqual([1, "20260500001", "OO초등학교 개축공사", "공사"]);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

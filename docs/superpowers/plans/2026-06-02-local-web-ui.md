@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a local Vite + React web UI that reuses the existing notice collection, normalization, D-Day, CSV, and Excel export logic.
+**Goal:** Build a local Vite + React web UI that reuses the existing notice collection, normalization, row numbering, CSV, and Excel export logic.
 
 **Architecture:** Add a small Express app in `src/web/server.ts` with JSON and file-download endpoints. Add Vite React files under `src/web/client` and serve them through Vite middleware for local development. Keep all business behavior in existing shared modules.
 
