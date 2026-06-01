@@ -24,7 +24,7 @@ export function buildNoticeExportRows(notices: NormalizedNotice[]): NoticeExport
       "구분": noticeTypeToKorean(notice.noticeType),
       "기관명": notice.agency,
       "지역": notice.region ?? "",
-      "예산": notice.budget ?? "",
+      "예산": formatBudget(notice.budget),
       "마감일": notice.deadline ?? "",
       "업종제한": notice.industryRestriction ?? "",
       "원문링크": notice.sourceUrl ?? ""
@@ -37,6 +37,16 @@ export function exportNoticesToCsv(notices: NormalizedNotice[]): string {
     EXPORT_COLUMNS.join(","),
     ...rows.map((row) => EXPORT_COLUMNS.map((column) => escapeCsvValue(row[column])).join(","))
   ].join("\n");
+}
+
+export function formatBudget(value: number | undefined): string {
+  if (value === undefined || !Number.isFinite(value)) {
+    return "";
+  }
+
+  return new Intl.NumberFormat("en-US", {
+    maximumFractionDigits: 0
+  }).format(value);
 }
 
 function compareNoticesForExport(a: NormalizedNotice, b: NormalizedNotice): number {
