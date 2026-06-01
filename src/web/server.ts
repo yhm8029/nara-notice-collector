@@ -1,4 +1,5 @@
 import express, { type Express } from "express";
+import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { exportNoticesToCsv } from "../export/csv-exporter.js";
 import { exportNoticesToExcelBuffer } from "../export/excel-exporter.js";
@@ -110,6 +111,6 @@ async function createViteMiddleware(): Promise<ViteDevServer> {
   });
 }
 
-if (import.meta.url === `file://${process.argv[1]?.replaceAll("\\", "/")}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   await startWebServer();
 }

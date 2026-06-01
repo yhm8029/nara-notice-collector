@@ -102,11 +102,29 @@ npm run typecheck
 npm test
 ```
 
+로컬 웹 UI를 실행합니다.
+
+```bash
+npm run web
+```
+
 ---
 
 ## 샘플 데이터 실행
 
 API 키가 없어도 샘플 데이터로 먼저 실행해볼 수 있습니다.
+
+브라우저에서 실행:
+
+```bash
+npm run web
+```
+
+실행 후 아래 주소를 엽니다.
+
+```text
+http://127.0.0.1:5173
+```
 
 CSV 파일로 내보내기:
 
