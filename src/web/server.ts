@@ -8,6 +8,7 @@ import type { NormalizedNotice } from "../nara/types.js";
 import { loadSampleRawNotices } from "../nara/sample-client.js";
 import { normalizeNotices } from "../normalize/notice-normalizer.js";
 import { buildNoticeExportRows } from "../export/csv-exporter.js";
+import { buildSynapViewerUrl } from "./synap-viewer.js";
 
 export type CreateWebAppOptions = {
   enableVite?: boolean;
@@ -73,6 +74,18 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     response.send(buffer);
   });
 
+  app.get("/api/viewer-url", (request, response) => {
+    const sourceUrl = readQueryString(request.query.url);
+    const title = readQueryString(request.query.title);
+    const template = options.env?.SYNAP_VIEWER_URL_TEMPLATE ?? process.env.SYNAP_VIEWER_URL_TEMPLATE;
+
+    try {
+      response.json(buildSynapViewerUrl({ sourceUrl, title }, { template }));
+    } catch (error) {
+      response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
   if (options.enableVite !== false) {
     const vite = await createViteMiddleware();
     app.use(vite.middlewares);
@@ -102,6 +115,13 @@ function readPostedNotices(body: unknown): NormalizedNotice[] {
 
   const notices = (body as { notices?: unknown }).notices;
   return Array.isArray(notices) ? (notices as NormalizedNotice[]) : [];
+}
+
+function readQueryString(value: unknown): string {
+  if (Array.isArray(value)) {
+    return typeof value[0] === "string" ? value[0] : "";
+  }
+  return typeof value === "string" ? value : "";
 }
 
 async function createViteMiddleware(): Promise<ViteDevServer> {

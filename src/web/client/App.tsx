@@ -1,4 +1,4 @@
-import { Download, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
+import { Download, ExternalLink, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type NoticeRow = {
@@ -32,6 +32,12 @@ type NoticePayload = {
   notices: NormalizedNotice[];
 };
 
+type ViewerUrlPayload = {
+  mode: "synap" | "source";
+  viewerUrl: string;
+  message?: string;
+};
+
 const columns: (keyof NoticeRow)[] = [
   "No.",
   "공고번호",
@@ -44,6 +50,8 @@ const columns: (keyof NoticeRow)[] = [
   "업종제한",
   "원문링크"
 ];
+
+const tableColumns = [...columns, "공고문"] as const;
 
 export function App() {
   const [rows, setRows] = useState<NoticeRow[]>([]);
@@ -121,6 +129,23 @@ export function App() {
       setError(toErrorMessage(error));
     } finally {
       setLoading("");
+    }
+  }
+
+  async function openNoticeDocument(row: NoticeRow) {
+    if (!row["원문링크"]) {
+      setError("원문링크가 없는 공고입니다.");
+      return;
+    }
+
+    setError("");
+    try {
+      const payload = await fetchJson<ViewerUrlPayload>(
+        `/api/viewer-url?url=${encodeURIComponent(row["원문링크"])}&title=${encodeURIComponent(row["공고명"])}`
+      );
+      window.open(payload.viewerUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setError(toErrorMessage(error));
     }
   }
 
@@ -209,7 +234,7 @@ export function App() {
         <table>
           <thead>
             <tr>
-              {columns.map((column) => (
+              {tableColumns.map((column) => (
                 <th key={column}>{column}</th>
               ))}
             </tr>
@@ -217,7 +242,7 @@ export function App() {
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td className="empty" colSpan={columns.length}>
+                <td className="empty" colSpan={tableColumns.length}>
                   표시할 공고가 없습니다.
                 </td>
               </tr>
@@ -229,6 +254,18 @@ export function App() {
                       {row[column]}
                     </td>
                   ))}
+                  <td>
+                    <button
+                      className="compact"
+                      type="button"
+                      onClick={() => void openNoticeDocument(row)}
+                      disabled={!row["원문링크"]}
+                      title="Synap 설정이 있으면 Synap 뷰어로 열고, 없으면 원문 링크를 엽니다."
+                    >
+                      <ExternalLink size={16} />
+                      보기
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
