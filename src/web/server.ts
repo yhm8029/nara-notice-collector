@@ -93,7 +93,13 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
         return;
       }
 
-      response.json(toLocalViewerResult(buildSynapViewerUrl({ sourceUrl, title }, { template }), title));
+      const result = buildSynapViewerUrl({ sourceUrl, title }, { template });
+      if (!isAllowedSynapViewerUrl(result.viewerUrl)) {
+        response.status(502).json({ error: "Synap 공고문 보기 URL이 없어 다운로드를 차단했습니다." });
+        return;
+      }
+
+      response.json(toLocalViewerResult(result, title));
     } catch (error) {
       response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -104,8 +110,9 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     const title = readQueryString(request.query.title) || "공고문";
 
     try {
+      const html = renderLocalViewerHtml({ viewerUrl, title });
       response.setHeader("content-type", "text/html; charset=utf-8");
-      response.send(renderLocalViewerHtml({ viewerUrl, title }));
+      response.send(html);
     } catch (error) {
       response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -139,6 +146,10 @@ function buildLocalViewerUrl(viewerUrl: string, title: string): string {
 
 function renderLocalViewerHtml(input: { viewerUrl: string; title: string }): string {
   const viewerUrl = normalizeHttpUrl(input.viewerUrl);
+  if (!isAllowedSynapViewerUrl(viewerUrl)) {
+    throw new Error("Synap 공고문 보기 URL만 열 수 있습니다.");
+  }
+
   const title = input.title.trim() || "공고문";
   return `<!doctype html>
 <html lang="ko">
@@ -202,6 +213,19 @@ function renderLocalViewerHtml(input: { viewerUrl: string; title: string }): str
     </div>
   </body>
 </html>`;
+}
+
+function isAllowedSynapViewerUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.hostname.endsWith("g2b.go.kr") && url.pathname.includes("/SynapDocViewServer/viewer/doc.html")) {
+      return true;
+    }
+
+    return url.hostname.toLowerCase().includes("synap");
+  } catch {
+    return false;
+  }
 }
 
 function normalizeHttpUrl(value: string): string {
