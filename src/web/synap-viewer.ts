@@ -23,12 +23,12 @@ export function buildSynapViewerUrl(input: ViewerUrlInput, config: SynapViewerCo
     return {
       mode: "source",
       viewerUrl: sourceUrl,
-      message: "SYNAP_VIEWER_URL_TEMPLATE is not configured. Opening the original notice link."
+      message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
     };
   }
 
   if (!template.includes("{url}")) {
-    throw new Error("SYNAP_VIEWER_URL_TEMPLATE must include a {url} placeholder.");
+    throw new Error("Synap 문서뷰어 URL 템플릿에는 {url} 값이 포함되어야 합니다.");
   }
 
   return {
@@ -42,18 +42,18 @@ export function buildSynapViewerUrl(input: ViewerUrlInput, config: SynapViewerCo
 function normalizeSourceUrl(sourceUrl: string): string {
   const trimmed = sourceUrl.trim();
   if (!trimmed) {
-    throw new Error("sourceUrl is required.");
+    throw new Error("공고문 링크가 필요합니다.");
   }
 
   let parsed: URL;
   try {
     parsed = new URL(trimmed);
   } catch {
-    throw new Error("sourceUrl must be a valid URL.");
+    throw new Error("공고문 링크 형식이 올바르지 않습니다.");
   }
 
   if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    throw new Error("sourceUrl must use http or https.");
+    throw new Error("공고문 링크는 http 또는 https 주소여야 합니다.");
   }
 
   return parsed.href;

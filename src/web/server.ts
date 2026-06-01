@@ -40,7 +40,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     const resolvedApiKey = apiKey || options.env?.NARA_API_KEY || process.env.NARA_API_KEY;
     if (!resolvedApiKey) {
       response.status(400).json({
-        error: "NARA_API_KEY is required for collect mode. Enter an API key or set NARA_API_KEY locally."
+        error: "API 키를 입력하거나 로컬 환경변수 NARA_API_KEY를 설정하세요."
       });
       return;
     }

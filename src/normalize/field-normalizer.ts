@@ -48,17 +48,39 @@ export function normalizeDate(value: unknown): string | undefined {
 }
 
 export function normalizeIndustryRestriction(raw: Record<string, unknown>): string | undefined {
-  const explicitName = normalizeText(raw.indstrytyLmtNm);
-  if (explicitName) {
-    return explicitName;
+  const restrictions: string[] = [];
+  const industryNames = uniqueTexts(raw.indstrytyLmtNm, raw.indstrytyNm);
+  if (industryNames.length > 0) {
+    restrictions.push(`업종: ${industryNames.join(", ")}`);
   }
 
   const hasRestriction = normalizeText(raw.indstrytyLmtYn)?.toUpperCase();
-  if (hasRestriction === "Y") {
-    return "제한있음";
+  if (hasRestriction === "Y" && industryNames.length === 0) {
+    restrictions.push("업종제한 있음");
   }
 
-  return undefined;
+  const regionNames = uniqueTexts(raw.prtcptLmtRgnNm, raw.rgnLmtBidLocplcJdgmBssNm);
+  if (regionNames.length > 0) {
+    restrictions.push(`지역: ${regionNames.join(", ")}`);
+  }
+
+  if (normalizeText(raw.prdctClsfcLmtYn)?.toUpperCase() === "Y") {
+    restrictions.push("물품분류제한 있음");
+  }
+
+  if (normalizeText(raw.bidPrtcptLmtYn)?.toUpperCase() === "Y") {
+    restrictions.push("입찰참가제한 있음");
+  }
+
+  if (normalizeText(raw.cmmnSpldmdCorpRgnLmtYn)?.toUpperCase() === "Y") {
+    restrictions.push("공동수급 지역제한 있음");
+  }
+
+  return restrictions.length > 0 ? restrictions.join(", ") : undefined;
+}
+
+function uniqueTexts(...values: unknown[]): string[] {
+  return [...new Set(values.map((value) => normalizeText(value)).filter((value): value is string => Boolean(value)))];
 }
 
 function formatKstDateTime(date: Date): string {

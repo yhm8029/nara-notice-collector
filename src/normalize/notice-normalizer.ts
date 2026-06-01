@@ -24,7 +24,8 @@ export function normalizeNotice(raw: RawNaraNotice, options: NormalizeNoticeOpti
     budget: normalizeMoney(raw.presmptPrce ?? raw.asignBdgtAmt),
     deadline,
     industryRestriction: normalizeIndustryRestriction(raw),
-    sourceUrl: normalizeText(raw.sourceUrl),
+    sourceUrl: normalizeNoticeSourceUrl(raw),
+    documentUrl: normalizeNoticeDocumentUrl(raw),
     raw
   };
 }
@@ -34,4 +35,32 @@ export function normalizeNotices(
   options: NormalizeNoticeOptions = {}
 ): NormalizedNotice[] {
   return rawNotices.map((raw) => normalizeNotice(raw, options));
+}
+
+function normalizeNoticeSourceUrl(raw: RawNaraNotice): string | undefined {
+  return normalizeText(raw.sourceUrl) ?? normalizeText(raw.bidNtceDtlUrl) ?? normalizeText(raw.bidNtceUrl);
+}
+
+function normalizeNoticeDocumentUrl(raw: RawNaraNotice): string | undefined {
+  const standardNoticeUrl = normalizeText(raw.stdNtceDocUrl);
+  if (standardNoticeUrl) {
+    return standardNoticeUrl;
+  }
+
+  for (let index = 1; index <= 10; index += 1) {
+    const fileName = normalizeText(raw[`ntceSpecFileNm${index}`]);
+    const fileUrl = normalizeText(raw[`ntceSpecDocUrl${index}`]);
+    if (fileName?.includes("공고문") && fileUrl) {
+      return fileUrl;
+    }
+  }
+
+  for (let index = 1; index <= 10; index += 1) {
+    const fileUrl = normalizeText(raw[`ntceSpecDocUrl${index}`]);
+    if (fileUrl) {
+      return fileUrl;
+    }
+  }
+
+  return undefined;
 }

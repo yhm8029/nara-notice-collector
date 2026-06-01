@@ -49,7 +49,7 @@ export class NaraApiClient {
 
   constructor(config: NaraApiClientConfig) {
     if (!config.apiKey) {
-      throw new Error("NARA_API_KEY is required for Nara API collection.");
+      throw new Error("나라장터 API 키가 필요합니다.");
     }
 
     this.apiKey = config.apiKey;
@@ -132,7 +132,7 @@ export class NaraApiClient {
 export function createNaraClientFromEnv(env: Record<string, string | undefined> = process.env): NaraApiClient {
   const apiKey = env.NARA_API_KEY;
   if (!apiKey) {
-    throw new Error("NARA_API_KEY is required for collect mode. Set NARA_API_KEY or use the sample command.");
+    throw new Error("API 키가 필요합니다. NARA_API_KEY를 설정하거나 샘플 명령을 사용하세요.");
   }
 
   return new NaraApiClient({ apiKey });

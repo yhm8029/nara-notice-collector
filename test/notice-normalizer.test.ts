@@ -34,7 +34,6 @@ describe("sample notice data", () => {
       "공고명": notice.title,
       "구분": "공사",
       "기관명": notice.agency,
-      "지역": "",
       "예산": "",
       "마감일": "",
       "업종제한": "",
@@ -47,7 +46,6 @@ describe("sample notice data", () => {
       "공고명": "OO초등학교 그린스마트스쿨 개축공사",
       "구분": "공사",
       "기관명": "OO교육지원청",
-      "지역": "",
       "예산": "",
       "마감일": "",
       "업종제한": "",
@@ -91,8 +89,12 @@ describe("notice normalizer", () => {
         bidClseDt: "2026-05-31 10:00:00",
         indstrytyLmtYn: "Y",
         indstrytyLmtNm: "건축공사업",
+        indstrytyNm: "건축공사업",
+        prtcptLmtRgnNm: "서울특별시",
+        prdctClsfcLmtYn: "Y",
         regionNm: " 서울특별시 ",
-        sourceUrl: " https://example.com/notices/20260500001 "
+        bidNtceDtlUrl: " https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=20260500001&bidPbancOrd=000 ",
+        stdNtceDocUrl: " https://www.g2b.go.kr/download/std-notice.hwp "
       },
       { baseDate: new Date("2026-05-31") }
     );
@@ -104,8 +106,9 @@ describe("notice normalizer", () => {
       region: "서울특별시",
       budget: 1200000000,
       deadline: "2026-05-31 오전 10:00",
-      industryRestriction: "건축공사업",
-      sourceUrl: "https://example.com/notices/20260500001",
+      industryRestriction: "업종: 건축공사업, 지역: 서울특별시, 물품분류제한 있음",
+      sourceUrl: "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=20260500001&bidPbancOrd=000",
+      documentUrl: "https://www.g2b.go.kr/download/std-notice.hwp",
       noticeType: "construction"
     });
     expect(notice.raw?.bidNtceNo).toBe(" 20260500001 ");
@@ -126,5 +129,21 @@ describe("notice normalizer", () => {
     expect(notice.deadline).toBeUndefined();
     expect(notice.region).toBeUndefined();
     expect(notice.industryRestriction).toBeUndefined();
+  });
+
+  it("uses the first notice document attachment when the standard notice URL is missing", () => {
+    const notice = normalizeNotice({
+      bidNtceNo: "20260500003",
+      bidNtceNm: "행정복지센터 설계공모",
+      ntceInsttNm: "OO시청",
+      bidNtceUrl: "https://www.g2b.go.kr/link/detail",
+      ntceSpecFileNm1: "설계공모지침서.hwp",
+      ntceSpecDocUrl1: "https://www.g2b.go.kr/download/spec.hwp",
+      ntceSpecFileNm2: "공고문.pdf",
+      ntceSpecDocUrl2: "https://www.g2b.go.kr/download/notice.pdf"
+    });
+
+    expect(notice.sourceUrl).toBe("https://www.g2b.go.kr/link/detail");
+    expect(notice.documentUrl).toBe("https://www.g2b.go.kr/download/notice.pdf");
   });
 });

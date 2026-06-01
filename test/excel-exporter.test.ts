@@ -20,7 +20,6 @@ describe("Excel exporter", () => {
             title: "OO초등학교 개축공사",
             noticeType: "construction",
             agency: "OO교육지원청",
-            region: "서울특별시",
             budget: 1200000000,
             deadline: "2026-06-01 오전 10:00",
             industryRestriction: "건축공사업",
@@ -33,7 +32,7 @@ describe("Excel exporter", () => {
       const rows = await readSheet(output, "notices");
       expect(rows[0]).toEqual(EXPORT_COLUMNS);
       expect(rows[1]?.slice(0, 4)).toEqual([1, "20260500001", "OO초등학교 개축공사", "공사"]);
-      expect(rows[1]?.[6]).toBe(1200000000);
+      expect(rows[1]?.[5]).toBe(1200000000);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
