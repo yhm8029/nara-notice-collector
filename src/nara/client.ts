@@ -32,6 +32,7 @@ export type NaraNoticeSearchOptions = {
   keyword?: string;
   pageNo?: number;
   numOfRows?: number;
+  maxPages?: number;
 };
 
 export type NaraApiClientConfig = {
@@ -58,24 +59,52 @@ export class NaraApiClient {
   }
 
   async searchNotices(options: NaraNoticeSearchOptions): Promise<RawNaraNotice[]> {
+    const dateRanges = splitNaraDateRanges(options.from, options.to);
+    const numOfRows = options.numOfRows ?? 100;
+    const maxPages = options.maxPages ?? 10;
     const noticesByEndpoint = await Promise.all(
       this.endpoints.map(async (endpoint) => {
-        const url = this.buildSearchUrl(options, endpoint.url);
-        const response = await this.fetchImpl(url);
+        const endpointNotices: RawNaraNotice[] = [];
 
-        if (!response.ok) {
-          throw new Error(`Nara API request failed: ${response.status} ${response.statusText}`);
+        for (const range of dateRanges) {
+          for (let pageNo = options.pageNo ?? 1; pageNo <= maxPages; pageNo += 1) {
+            const url = this.buildSearchUrl(
+              {
+                ...options,
+                from: range.from,
+                to: range.to,
+                pageNo,
+                numOfRows
+              },
+              endpoint.url
+            );
+            const response = await this.fetchImpl(url);
+
+            if (!response.ok) {
+              throw new Error(`Nara API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            const payload = (await response.json()) as unknown;
+            if (isNoDataResult(payload)) {
+              break;
+            }
+            throwIfApiError(payload);
+
+            const pageItems = extractItems(payload);
+            endpointNotices.push(
+              ...pageItems.map((notice) => ({
+                ...notice,
+                noticeTypeHint: endpoint.noticeType
+              }))
+            );
+
+            if (!shouldLoadNextPage(payload, pageNo, numOfRows, pageItems.length)) {
+              break;
+            }
+          }
         }
 
-        const payload = (await response.json()) as unknown;
-        if (isNoDataResult(payload)) {
-          return [];
-        }
-        throwIfApiError(payload);
-        return extractItems(payload).map((notice) => ({
-          ...notice,
-          noticeTypeHint: endpoint.noticeType
-        }));
+        return endpointNotices;
       })
     );
 
@@ -84,7 +113,7 @@ export class NaraApiClient {
 
   buildSearchUrl(options: NaraNoticeSearchOptions, endpointUrl = this.endpoints[0]?.url ?? BASE_ENDPOINT): string {
     const url = new URL(endpointUrl);
-    url.searchParams.set("ServiceKey", this.apiKey);
+    url.searchParams.set("serviceKey", normalizeServiceKey(this.apiKey));
     url.searchParams.set("type", "json");
     url.searchParams.set("inqryDiv", "1");
     url.searchParams.set("pageNo", String(options.pageNo ?? 1));
@@ -125,6 +154,58 @@ function formatNaraDateTime(value: string, boundary: "start" | "end"): string {
   throw new Error("--from and --to must be YYYY-MM-DD, YYYY-MM-DD HH:mm, or YYYYMMDDHHMM.");
 }
 
+function splitNaraDateRanges(from: string, to: string): Array<{ from: string; to: string }> {
+  const start = readDateParts(from);
+  const end = readDateParts(to);
+  const startTime = Date.UTC(start.year, start.month - 1, start.day);
+  const endTime = Date.UTC(end.year, end.month - 1, end.day);
+
+  if (startTime > endTime) {
+    throw new Error("--from must be earlier than or equal to --to.");
+  }
+
+  const ranges: Array<{ from: string; to: string }> = [];
+  let cursor = start;
+
+  while (Date.UTC(cursor.year, cursor.month - 1, cursor.day) <= endTime) {
+    const lastDayOfMonth = new Date(Date.UTC(cursor.year, cursor.month, 0)).getUTCDate();
+    const rangeEnd =
+      cursor.year === end.year && cursor.month === end.month
+        ? end
+        : { year: cursor.year, month: cursor.month, day: lastDayOfMonth };
+
+    ranges.push({
+      from: `${formatDateParts(cursor)}0000`,
+      to: `${formatDateParts(rangeEnd)}2359`
+    });
+
+    const nextMonth = cursor.month === 12 ? 1 : cursor.month + 1;
+    const nextYear = cursor.month === 12 ? cursor.year + 1 : cursor.year;
+    cursor = { year: nextYear, month: nextMonth, day: 1 };
+  }
+
+  return ranges;
+}
+
+function readDateParts(value: string): { year: number; month: number; day: number } {
+  const text = value.trim();
+  const compact = /^(\d{4})(\d{2})(\d{2})(?:\d{4})?$/.exec(text);
+  if (compact) {
+    return { year: Number(compact[1]), month: Number(compact[2]), day: Number(compact[3]) };
+  }
+
+  const dashed = /^(\d{4})-(\d{2})-(\d{2})(?:[ T]\d{2}:\d{2}(?::\d{2})?)?$/.exec(text);
+  if (dashed) {
+    return { year: Number(dashed[1]), month: Number(dashed[2]), day: Number(dashed[3]) };
+  }
+
+  throw new Error("--from and --to must be YYYY-MM-DD, YYYY-MM-DD HH:mm, or YYYYMMDDHHMM.");
+}
+
+function formatDateParts(parts: { year: number; month: number; day: number }): string {
+  return `${parts.year}${String(parts.month).padStart(2, "0")}${String(parts.day).padStart(2, "0")}`;
+}
+
 function extractItems(payload: unknown): RawNaraNotice[] {
   if (!payload || typeof payload !== "object") {
     return [];
@@ -150,6 +231,19 @@ function extractItems(payload: unknown): RawNaraNotice[] {
   return [];
 }
 
+function shouldLoadNextPage(payload: unknown, pageNo: number, numOfRows: number, pageItemCount: number): boolean {
+  if (pageItemCount === 0) {
+    return false;
+  }
+
+  const totalCount = readNumber(readResponseBody(payload)?.totalCount);
+  if (totalCount !== undefined) {
+    return pageNo * numOfRows < totalCount;
+  }
+
+  return pageItemCount >= numOfRows;
+}
+
 function throwIfApiError(payload: unknown): void {
   const header = readResponseHeader(payload);
   const resultCode = readString(header?.resultCode);
@@ -170,6 +264,12 @@ function readResponseHeader(payload: unknown): Record<string, unknown> | undefin
   const root = asRecord(payload);
   const response = asRecord(root?.response);
   return asRecord(response?.header);
+}
+
+function readResponseBody(payload: unknown): Record<string, unknown> | undefined {
+  const root = asRecord(payload);
+  const response = asRecord(root?.response);
+  return asRecord(response?.body);
 }
 
 function dedupeByNoticeId(notices: RawNaraNotice[]): RawNaraNotice[] {
@@ -196,4 +296,24 @@ function asRecord(value: unknown): Record<string, unknown> | undefined {
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" ? value : undefined;
+}
+
+function readNumber(value: unknown): number | undefined {
+  if (typeof value === "number") {
+    return value;
+  }
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }
+  return undefined;
+}
+
+function normalizeServiceKey(serviceKey: string): string {
+  const trimmed = serviceKey.trim();
+  try {
+    return decodeURIComponent(trimmed);
+  } catch {
+    return trimmed;
+  }
 }
