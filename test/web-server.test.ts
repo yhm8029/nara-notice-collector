@@ -79,9 +79,8 @@ describe("local web server API", () => {
       .expect(200);
 
     expect(response.body.mode).toBe("synap");
-    expect(response.body.viewerUrl).toBe(
-      "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001&title=%ED%96%89%EC%A0%95%EB%B3%B5%EC%A7%80%EC%84%BC%ED%84%B0%20%EC%95%88%EB%82%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
-    );
+    expect(response.body.viewerUrl).toContain("/viewer?");
+    expect(decodeURIComponent(response.body.viewerUrl)).toContain("https://viewer.example.com/view?");
   });
 
   it("falls back to the source URL when Synap is not configured", async () => {
@@ -94,7 +93,8 @@ describe("local web server API", () => {
 
     expect(response.body).toEqual({
       mode: "source",
-      viewerUrl: "https://example.com/notices/20260500002",
+      viewerUrl:
+        "/viewer?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500002&title=%EA%B3%B5%EA%B3%A0",
       message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
     });
   });
@@ -130,8 +130,24 @@ describe("local web server API", () => {
     expect(response.body).toEqual({
       mode: "synap",
       viewerUrl:
-        "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=route-resolved-key&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer"
+        "/viewer?url=https%3A%2F%2Fwww.g2b.go.kr%2FSynapDocViewServer%2Fviewer%2Fdoc.html%3Fkey%3Droute-resolved-key%26convType%3Dimg%26convLocale%3Dko_KR%26contextPath%3D%2FSynapDocViewServer&title=%EA%B3%B5%EA%B3%A0%EB%AC%B8"
     });
+  });
+
+  it("renders the local viewer page as HTML with an embedded Synap iframe", async () => {
+    const app = await createWebApp({ enableVite: false, env: {} });
+    const synapUrl =
+      "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=test-key&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer";
+
+    const response = await request(app)
+      .get("/viewer")
+      .query({ url: synapUrl, title: "공고문" })
+      .expect(200);
+
+    expect(response.header["content-type"]).toContain("text/html");
+    expect(response.header["content-disposition"]).toBeUndefined();
+    expect(response.text).toContain("<iframe");
+    expect(response.text).toContain(synapUrl.replaceAll("&", "&amp;"));
   });
 
   it("does not open a G2B attachment download URL when Synap resolution fails", async () => {

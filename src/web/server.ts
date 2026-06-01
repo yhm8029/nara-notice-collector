@@ -89,11 +89,23 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
           return;
         }
 
-        response.json(buildSynapViewerUrl({ sourceUrl: viewerUrl, title }, { template }));
+        response.json(toLocalViewerResult(buildSynapViewerUrl({ sourceUrl: viewerUrl, title }, { template }), title));
         return;
       }
 
-      response.json(buildSynapViewerUrl({ sourceUrl, title }, { template }));
+      response.json(toLocalViewerResult(buildSynapViewerUrl({ sourceUrl, title }, { template }), title));
+    } catch (error) {
+      response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.get("/viewer", (request, response) => {
+    const viewerUrl = readQueryString(request.query.url);
+    const title = readQueryString(request.query.title) || "공고문";
+
+    try {
+      response.setHeader("content-type", "text/html; charset=utf-8");
+      response.send(renderLocalViewerHtml({ viewerUrl, title }));
     } catch (error) {
       response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -112,6 +124,108 @@ export async function startWebServer(port = Number(process.env.PORT ?? 5173)): P
   app.listen(port, "127.0.0.1", () => {
     console.log(`nara-notice-collector web UI: http://127.0.0.1:${port}`);
   });
+}
+
+function toLocalViewerResult(result: ReturnType<typeof buildSynapViewerUrl>, title: string) {
+  return {
+    ...result,
+    viewerUrl: buildLocalViewerUrl(result.viewerUrl, title)
+  };
+}
+
+function buildLocalViewerUrl(viewerUrl: string, title: string): string {
+  return `/viewer?url=${encodeURIComponent(viewerUrl)}&title=${encodeURIComponent(title)}`;
+}
+
+function renderLocalViewerHtml(input: { viewerUrl: string; title: string }): string {
+  const viewerUrl = normalizeHttpUrl(input.viewerUrl);
+  const title = input.title.trim() || "공고문";
+  return `<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${escapeHtml(title)}</title>
+    <style>
+      html, body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        background: #f5f5f5;
+        color: #222;
+        font-family: "Malgun Gothic", Arial, sans-serif;
+      }
+      .viewer-shell {
+        display: grid;
+        grid-template-rows: 44px 1fr;
+        width: 100%;
+        height: 100%;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 14px;
+        border-bottom: 1px solid #d7d7d7;
+        background: #fff;
+      }
+      h1 {
+        overflow: hidden;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      a {
+        flex: 0 0 auto;
+        color: #1658a8;
+        font-size: 13px;
+        text-decoration: none;
+      }
+      iframe {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #fff;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="viewer-shell">
+      <header>
+        <h1>${escapeHtml(title)}</h1>
+        <a href="${escapeHtml(viewerUrl)}" target="_blank" rel="noreferrer">새 탭에서 열기</a>
+      </header>
+      <iframe src="${escapeHtml(viewerUrl)}" title="${escapeHtml(title)}"></iframe>
+    </div>
+  </body>
+</html>`;
+}
+
+function normalizeHttpUrl(value: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("공고문 보기 URL 형식이 올바르지 않습니다.");
+  }
+
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("공고문 보기 URL은 http 또는 https 주소여야 합니다.");
+  }
+
+  return parsed.href;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function toNoticePayload(notices: NormalizedNotice[]) {
