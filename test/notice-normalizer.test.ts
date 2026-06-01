@@ -92,6 +92,8 @@ describe("notice normalizer", () => {
         indstrytyNm: "건축공사업",
         prtcptLmtRgnNm: "서울특별시",
         prdctClsfcLmtYn: "Y",
+        dtilPrdctClsfcNo: "8110150801",
+        dtilPrdctClsfcNoNm: "건축설계용역",
         regionNm: " 서울특별시 ",
         bidNtceDtlUrl: " https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=20260500001&bidPbancOrd=000 ",
         stdNtceDocUrl: " https://www.g2b.go.kr/download/std-notice.hwp "
@@ -106,7 +108,7 @@ describe("notice normalizer", () => {
       region: "서울특별시",
       budget: 1200000000,
       deadline: "2026-05-31 오전 10:00",
-      industryRestriction: "업종: 건축공사업, 지역: 서울특별시, 물품분류제한 있음",
+      industryRestriction: "업종: 건축공사업, 지역: 서울특별시, 물품분류: 건축설계용역(8110150801)",
       sourceUrl: "https://www.g2b.go.kr/link/PNPE027_01/single/?bidPbancNo=20260500001&bidPbancOrd=000",
       documentUrl: "https://www.g2b.go.kr/download/std-notice.hwp",
       noticeType: "construction"
@@ -145,5 +147,53 @@ describe("notice normalizer", () => {
 
     expect(notice.sourceUrl).toBe("https://www.g2b.go.kr/link/detail");
     expect(notice.documentUrl).toBe("https://www.g2b.go.kr/download/notice.pdf");
+  });
+
+  it("shows concrete product classification limits instead of a generic product limit label", () => {
+    const notice = normalizeNotice({
+      bidNtceNo: "20260500004",
+      bidNtceNm: "행정복지센터 장비 구매",
+      ntceInsttNm: "OO시청",
+      bsnsDivNm: "물품",
+      prdctClsfcLmtYn: "Y",
+      purchsObjPrdctList: "[1^4111540601^자외-가시선분광광도계],[2^4321150301^태블릿컴퓨터]"
+    });
+
+    expect(notice.industryRestriction).toBe(
+      "물품분류: 자외-가시선분광광도계(4111540601), 태블릿컴퓨터(4321150301)"
+    );
+    expect(notice.industryRestriction).not.toContain("물품분류제한 있음");
+  });
+
+  it("shows procurement classification details when industry limit names are missing", () => {
+    const notice = normalizeNotice({
+      bidNtceNo: "20260500005",
+      bidNtceNm: "행정복지센터 설계공모",
+      ntceInsttNm: "OO시청",
+      bsnsDivNm: "용역",
+      indstrytyLmtYn: "Y",
+      pubPrcrmntLrgClsfcNm: "기술용역",
+      pubPrcrmntMidClsfcNm: "설계",
+      pubPrcrmntClsfcNo: "81101508",
+      pubPrcrmntClsfcNm: "건축설계용역"
+    });
+
+    expect(notice.industryRestriction).toBe("업종/분류: 기술용역 > 설계 > 건축설계용역(81101508)");
+    expect(notice.industryRestriction).not.toContain("업종제한 있음");
+  });
+
+  it("prefers Nara Synap viewer URLs when the API response includes them", () => {
+    const notice = normalizeNotice({
+      bidNtceNo: "20260500006",
+      bidNtceNm: "행정복지센터 설계공모",
+      ntceInsttNm: "OO시청",
+      stdNtceDocUrl: "https://www.g2b.go.kr/download/std-notice.hwp",
+      stdNtceDocViewUrl:
+        "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=3d3edcc457ef46d28e1077ee2076d23b&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer"
+    });
+
+    expect(notice.documentUrl).toBe(
+      "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=3d3edcc457ef46d28e1077ee2076d23b&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer"
+    );
   });
 });

@@ -48,8 +48,10 @@ npm run web
 http://127.0.0.1:5173
 ```
 
-각 공고의 `공고문` 버튼을 누르면 새 탭에서 공고문 첨부파일을 엽니다.
-Synap 문서뷰어 서버가 있는 환경에서는 실행 전에 아래 환경변수를 설정합니다.
+각 공고의 `공고문` 버튼을 누르면 새 탭에서 공고문을 엽니다.
+나라장터 API 응답에 G2B Synap 문서뷰어 URL이 있으면 그 URL을 바로 열고, 없으면 공고문 첨부파일 링크를 엽니다.
+
+별도 Synap 문서뷰어 서버가 있는 환경에서는 실행 전에 아래 환경변수를 설정할 수 있습니다.
 
 ```powershell
 $env:SYNAP_VIEWER_URL_TEMPLATE="https://viewer.example.com/view?url={url}&title={title}"
@@ -57,7 +59,7 @@ npm run web
 ```
 
 `viewer.example.com` 부분은 실제 사용하는 Synap 문서뷰어 주소로 바꿔야 합니다.
-설정하지 않으면 공고의 원문 링크를 그대로 엽니다.
+설정하지 않으면 API 응답의 Synap viewer URL 또는 공고문 첨부파일 링크를 그대로 엽니다.
 
 ## 6. 샘플 CSV 만들기
 
