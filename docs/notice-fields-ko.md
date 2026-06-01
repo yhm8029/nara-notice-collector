@@ -58,4 +58,6 @@ CSV와 웹 화면에는 `120,000,000`처럼 천 단위 쉼표를 붙여 표시�
 ## 원문링크
 
 원천 데이터의 `sourceUrl`, `bidNtceDtlUrl`, `bidNtceUrl` 중 확인 가능한 공고 상세 URL을 사용합니다.
-로컬 웹의 `공고문` 버튼은 API 응답에 G2B Synap 문서뷰어 URL이 있으면 그 URL을 바로 열고, 없으면 `stdNtceDocUrl` 또는 `ntceSpecDocUrl1~10` 중 공고문 첨부파일 URL을 엽니다.
+로컬 웹의 `공고문` 버튼은 API 응답에 G2B Synap 문서뷰어 URL이 있으면 그 URL을 바로 엽니다.
+Synap URL이 없고 `stdNtceDocUrl` 또는 `ntceSpecDocUrl1~10` 값이 나라장터 `downloadFile.do` 첨부 URL이면, `selectTechAnncMngV.do`와 `atchFileDocViewer.do`를 통해 Synap viewer URL로 변환해서 엽니다.
+변환에 실패하면 원문 링크나 다운로드 링크로 이동하지 않고 오류 메시지를 표시합니다.

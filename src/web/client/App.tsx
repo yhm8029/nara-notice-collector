@@ -135,9 +135,9 @@ export function App() {
 
   async function openNoticeDocument(row: NoticeRow) {
     const notice = notices.find((notice) => notice.noticeId === row["공고번호"]);
-    const documentUrl = notice?.documentUrl ?? row["원문링크"];
+    const documentUrl = notice?.documentUrl;
     if (!documentUrl) {
-      setError("공고문 링크가 없는 공고입니다.");
+      setError("공고문 첨부 링크가 없는 공고입니다.");
       return;
     }
 
@@ -268,8 +268,8 @@ export function App() {
                       className="compact"
                       type="button"
                       onClick={() => void openNoticeDocument(row)}
-                      disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl && !row["원문링크"]}
-                      title="Synap 설정이 있으면 공고문 파일을 Synap 뷰어로 열고, 없으면 공고문 파일 링크를 엽니다."
+                      disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl}
+                      title="나라장터 첨부파일을 Synap 공고문 뷰어로 엽니다."
                     >
                       <ExternalLink size={16} />
                       보기

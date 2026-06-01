@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { createWebApp } from "../src/web/server.js";
 
@@ -98,4 +98,62 @@ describe("local web server API", () => {
       message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
     });
   });
+
+  it("resolves G2B attachment download URLs to Synap viewer URLs", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        responseJson({
+          dmItemMap: {
+            itemPbancUntyAtchFileNo: "98297098-7712-4f8a-b3f7-99729b86c1e8"
+          }
+        })
+      )
+      .mockResolvedValueOnce(
+        responseJson({
+          result: {
+            viewUrlPath:
+              "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=route-resolved-key&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer"
+          }
+        })
+      );
+    const app = await createWebApp({ enableVite: false, env: {}, fetch: fetchImpl });
+
+    const response = await request(app)
+      .get("/api/viewer-url")
+      .query({
+        url: "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R25BK00829479&bidPbancOrd=000&fileSeq=2&prcmBsneSeCd=05",
+        title: "공고문"
+      })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      mode: "synap",
+      viewerUrl:
+        "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=route-resolved-key&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer"
+    });
+  });
+
+  it("does not open a G2B attachment download URL when Synap resolution fails", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(responseJson({ dmItemMap: {} }));
+    const app = await createWebApp({ enableVite: false, env: {}, fetch: fetchImpl });
+
+    const response = await request(app)
+      .get("/api/viewer-url")
+      .query({
+        url: "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R25BK00829479&bidPbancOrd=000&fileSeq=2",
+        title: "공고문"
+      })
+      .expect(502);
+
+    expect(response.body.error).toBe("나라장터 Synap 공고문 링크를 만들지 못했습니다.");
+  });
 });
+
+function responseJson(body: unknown) {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => body
+  };
+}

@@ -169,7 +169,8 @@ docs/nara-api-key-ko.md
 https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=...&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer
 ```
 
-Synap viewer URL이 없고 공고문 첨부파일 URL만 있는 경우에는 첨부파일 링크를 직접 엽니다.
+Synap viewer URL이 없고 나라장터 `downloadFile.do` 첨부 URL만 있는 경우에는 나라장터 첨부파일 정보를 조회해 Synap viewer URL로 변환한 뒤 엽니다.
+변환에 실패하면 원문 링크나 다운로드 링크로 이동하지 않고 오류 메시지를 표시합니다.
 별도 Synap 문서뷰어 서버를 사용하는 환경에서는 아래처럼 URL 템플릿을 설정할 수 있습니다.
 
 ```bash
@@ -177,7 +178,7 @@ SYNAP_VIEWER_URL_TEMPLATE="https://viewer.example.com/view?url={url}&title={titl
 ```
 
 `{url}`에는 공고 원문 URL이, `{title}`에는 공고명이 URL 인코딩되어 들어갑니다.
-이 값이 설정되지 않고 API 응답에도 Synap viewer URL이 없으면 공고문 첨부파일 링크를 그대로 엽니다.
+이 값이 설정되지 않아도 나라장터 첨부 URL은 G2B Synap viewer URL로 변환해서 엽니다.
 
 나라장터 API 필드 기준은 `yhm8029/notice-winner-pipeline-web` 저장소의 `input/review` 문서 중 `조달청_OpenAPI참고자료_나라장터_입찰공고정보서비스_1.1.docx` 및 변환된 `.txt` 내용을 참고했습니다.
 이 저장소에는 사설 Synap 주소나 인증 정보를 포함하지 않습니다.
