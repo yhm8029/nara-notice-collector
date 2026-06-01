@@ -68,6 +68,10 @@ export class NaraApiClient {
         }
 
         const payload = (await response.json()) as unknown;
+        if (isNoDataResult(payload)) {
+          return [];
+        }
+        throwIfApiError(payload);
         return extractItems(payload).map((notice) => ({
           ...notice,
           noticeTypeHint: endpoint.noticeType
@@ -80,12 +84,13 @@ export class NaraApiClient {
 
   buildSearchUrl(options: NaraNoticeSearchOptions, endpointUrl = this.endpoints[0]?.url ?? BASE_ENDPOINT): string {
     const url = new URL(endpointUrl);
-    url.searchParams.set("serviceKey", this.apiKey);
+    url.searchParams.set("ServiceKey", this.apiKey);
     url.searchParams.set("type", "json");
+    url.searchParams.set("inqryDiv", "1");
     url.searchParams.set("pageNo", String(options.pageNo ?? 1));
     url.searchParams.set("numOfRows", String(options.numOfRows ?? 100));
-    url.searchParams.set("inqryBgnDt", compactDate(options.from));
-    url.searchParams.set("inqryEndDt", compactDate(options.to));
+    url.searchParams.set("inqryBgnDt", formatNaraDateTime(options.from, "start"));
+    url.searchParams.set("inqryEndDt", formatNaraDateTime(options.to, "end"));
 
     if (options.keyword) {
       url.searchParams.set("bidNtceNm", options.keyword);
@@ -104,8 +109,20 @@ export function createNaraClientFromEnv(env: Record<string, string | undefined> 
   return new NaraApiClient({ apiKey });
 }
 
-function compactDate(value: string): string {
-  return value.replaceAll("-", "");
+function formatNaraDateTime(value: string, boundary: "start" | "end"): string {
+  const text = value.trim();
+  const compact = /^(\d{8})(\d{4})?$/.exec(text);
+  if (compact) {
+    return compact[2] ? text : `${text}${boundary === "start" ? "0000" : "2359"}`;
+  }
+
+  const dateTime = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::\d{2})?)?$/.exec(text);
+  if (dateTime) {
+    const [, year, month, day, hour, minute] = dateTime;
+    return `${year}${month}${day}${hour ?? (boundary === "start" ? "00" : "23")}${minute ?? (boundary === "start" ? "00" : "59")}`;
+  }
+
+  throw new Error("--from and --to must be YYYY-MM-DD, YYYY-MM-DD HH:mm, or YYYYMMDDHHMM.");
 }
 
 function extractItems(payload: unknown): RawNaraNotice[] {
@@ -133,6 +150,28 @@ function extractItems(payload: unknown): RawNaraNotice[] {
   return [];
 }
 
+function throwIfApiError(payload: unknown): void {
+  const header = readResponseHeader(payload);
+  const resultCode = readString(header?.resultCode);
+
+  if (!resultCode || resultCode === "00" || resultCode === "03") {
+    return;
+  }
+
+  const resultMsg = readString(header?.resultMsg) ?? "Unknown public data API error";
+  throw new Error(`Nara API returned ${resultCode}: ${resultMsg}`);
+}
+
+function isNoDataResult(payload: unknown): boolean {
+  return readString(readResponseHeader(payload)?.resultCode) === "03";
+}
+
+function readResponseHeader(payload: unknown): Record<string, unknown> | undefined {
+  const root = asRecord(payload);
+  const response = asRecord(root?.response);
+  return asRecord(response?.header);
+}
+
 function dedupeByNoticeId(notices: RawNaraNotice[]): RawNaraNotice[] {
   const seen = new Set<string>();
   const result: RawNaraNotice[] = [];
@@ -153,4 +192,8 @@ function dedupeByNoticeId(notices: RawNaraNotice[]): RawNaraNotice[] {
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" ? (value as Record<string, unknown>) : undefined;
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
