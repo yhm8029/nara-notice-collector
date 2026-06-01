@@ -1,59 +1,20 @@
-import type { NoticeType } from "../nara/types.js";
+import type { NoticeType, RawNaraNotice } from "../nara/types.js";
 
-const CONSTRUCTION_KEYWORDS = [
-  "공사",
-  "개축",
-  "증축",
-  "신축",
-  "보수",
-  "리모델링",
-  "전기공사",
-  "기계설비공사",
-  "정보통신공사"
-];
+const API_BUSINESS_DIVISION_MAP = new Map<string, NoticeType>([
+  ["공사", "construction"],
+  ["물품", "goods"],
+  ["용역", "service"],
+  ["내자", "domestic"],
+  ["외자", "domestic"]
+]);
 
-const GOODS_KEYWORDS = [
-  "구매",
-  "제조",
-  "납품",
-  "물품",
-  "장비",
-  "기자재",
-  "자재",
-  "시스템 구입"
-];
-
-const SERVICE_KEYWORDS = [
-  "용역",
-  "설계",
-  "감리",
-  "조사",
-  "점검",
-  "유지관리",
-  "위탁",
-  "진단",
-  "컨설팅"
-];
-
-export function classifyNoticeType(title: string | undefined): NoticeType {
-  const normalizedTitle = title?.trim() ?? "";
-  if (!normalizedTitle) {
-    return "domestic";
+export function classifyNoticeType(raw: RawNaraNotice): NoticeType {
+  const apiBusinessDivision = normalizeApiBusinessDivision(raw.bsnsDivNm);
+  if (apiBusinessDivision) {
+    return apiBusinessDivision;
   }
 
-  if (containsAny(normalizedTitle, CONSTRUCTION_KEYWORDS)) {
-    return "construction";
-  }
-
-  if (containsAny(normalizedTitle, GOODS_KEYWORDS)) {
-    return "goods";
-  }
-
-  if (containsAny(normalizedTitle, SERVICE_KEYWORDS)) {
-    return "service";
-  }
-
-  return "domestic";
+  return raw.noticeTypeHint ?? "domestic";
 }
 
 export function noticeTypeToKorean(noticeType: NoticeType): string {
@@ -69,6 +30,10 @@ export function noticeTypeToKorean(noticeType: NoticeType): string {
   }
 }
 
-function containsAny(value: string, keywords: string[]): boolean {
-  return keywords.some((keyword) => value.includes(keyword));
+function normalizeApiBusinessDivision(value: unknown): NoticeType | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return API_BUSINESS_DIVISION_MAP.get(value.trim());
 }

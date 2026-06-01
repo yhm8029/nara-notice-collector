@@ -6,20 +6,21 @@ describe("NaraApiClient", () => {
     expect(() => createNaraClientFromEnv({})).toThrow(/NARA_API_KEY/);
   });
 
-  it("builds a public-data request and returns raw notice items", async () => {
+  it("builds public-data requests for each Nara notice business endpoint and returns typed raw notice items", async () => {
     const requestedUrls: string[] = [];
     const client = new NaraApiClient({
       apiKey: "sample-key",
       fetch: async (url) => {
         requestedUrls.push(String(url));
+        const noticeId = `2026050000${requestedUrls.length}`;
         return new Response(
           JSON.stringify({
             response: {
               body: {
                 items: [
                   {
-                    bidNtceNo: "20260500001",
-                    bidNtceNm: "OO초등학교 개축공사",
+                    bidNtceNo: noticeId,
+                    bidNtceNm: "API 업무구분 공고",
                     ntceInsttNm: "OO교육지원청"
                   }
                 ]
@@ -37,8 +38,18 @@ describe("NaraApiClient", () => {
       keyword: "자동제어"
     });
 
-    expect(notices).toHaveLength(1);
-    expect(notices[0]?.bidNtceNo).toBe("20260500001");
+    expect(notices).toHaveLength(4);
+    expect(notices.map((notice) => notice.noticeTypeHint)).toEqual([
+      "construction",
+      "service",
+      "goods",
+      "domestic"
+    ]);
+    expect(requestedUrls).toHaveLength(4);
+    expect(requestedUrls[0]).toContain("getBidPblancListInfoCnstwkPPSSrch");
+    expect(requestedUrls[1]).toContain("getBidPblancListInfoServcPPSSrch");
+    expect(requestedUrls[2]).toContain("getBidPblancListInfoThngPPSSrch");
+    expect(requestedUrls[3]).toContain("getBidPblancListInfoFrgcptPPSSrch");
     expect(requestedUrls[0]).toContain("serviceKey=sample-key");
     expect(requestedUrls[0]).toContain("inqryBgnDt=20260501");
     expect(requestedUrls[0]).toContain("inqryEndDt=20260531");

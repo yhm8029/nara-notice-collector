@@ -3,6 +3,8 @@ export type NoticeType = "construction" | "goods" | "service" | "domestic";
 export type RawNaraNotice = Record<string, unknown> & {
   bidNtceNo?: string;
   bidNtceNm?: string;
+  bsnsDivNm?: string;
+  noticeTypeHint?: NoticeType;
   ntceInsttNm?: string;
   presmptPrce?: string;
   asignBdgtAmt?: string;
