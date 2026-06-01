@@ -5,7 +5,7 @@
   "license": "MIT",
   "type": "module",
   "bin": {
-    "nara-notice-collector": "./dist/cli.js"
+    "nara-notice-collector": "./dist/src/cli.js"
   },
   "files": [
     "dist",
