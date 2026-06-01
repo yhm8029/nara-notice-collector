@@ -50,11 +50,99 @@ describe("NaraApiClient", () => {
     expect(requestedUrls[1]).toContain("getBidPblancListInfoServcPPSSrch");
     expect(requestedUrls[2]).toContain("getBidPblancListInfoThngPPSSrch");
     expect(requestedUrls[3]).toContain("getBidPblancListInfoFrgcptPPSSrch");
-    expect(requestedUrls[0]).toContain("ServiceKey=sample-key");
+    expect(requestedUrls[0]).toContain("serviceKey=sample-key");
     expect(requestedUrls[0]).toContain("inqryDiv=1");
     expect(requestedUrls[0]).toContain("inqryBgnDt=202605010000");
     expect(requestedUrls[0]).toContain("inqryEndDt=202605312359");
     expect(decodeURIComponent(requestedUrls[0] ?? "")).toContain("bidNtceNm=행정복지센터");
+  });
+
+  it("decodes encoded public-data service keys before adding them to the request", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraApiClient({
+      apiKey: "abc%2Bdef%2Fghi%3D",
+      endpoints: [{ url: "https://example.com/api", noticeType: "goods" }],
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        return new Response(JSON.stringify({ response: { body: { items: [] } } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+    });
+
+    await client.searchNotices({ from: "2026-05-01", to: "2026-05-31" });
+
+    const requestedUrl = new URL(requestedUrls[0] ?? "");
+    expect(requestedUrl.searchParams.get("serviceKey")).toBe("abc+def/ghi=");
+  });
+
+  it("splits long date ranges into monthly public-data API requests", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraApiClient({
+      apiKey: "sample-key",
+      endpoints: [{ url: "https://example.com/api", noticeType: "goods" }],
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        return new Response(JSON.stringify({ response: { body: { items: [] } } }), {
+          status: 200,
+          headers: { "content-type": "application/json" }
+        });
+      }
+    });
+
+    await client.searchNotices({ from: "2026-01-01", to: "2026-05-31" });
+
+    expect(
+      requestedUrls.map((url) => {
+        const params = new URL(url).searchParams;
+        return [params.get("inqryBgnDt"), params.get("inqryEndDt")];
+      })
+    ).toEqual([
+      ["202601010000", "202601312359"],
+      ["202602010000", "202602282359"],
+      ["202603010000", "202603312359"],
+      ["202604010000", "202604302359"],
+      ["202605010000", "202605312359"]
+    ]);
+  });
+
+  it("loads additional pages when the API reports more results than one page", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraApiClient({
+      apiKey: "sample-key",
+      endpoints: [{ url: "https://example.com/api", noticeType: "goods" }],
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        const pageNo = new URL(String(url)).searchParams.get("pageNo");
+        const item =
+          pageNo === "1"
+            ? [
+                { bidNtceNo: "20260500001", bidNtceNm: "첫번째" },
+                { bidNtceNo: "20260500002", bidNtceNm: "두번째" }
+              ]
+            : [{ bidNtceNo: "20260500003", bidNtceNm: "세번째" }];
+
+        return new Response(
+          JSON.stringify({
+            response: {
+              body: {
+                pageNo: Number(pageNo),
+                numOfRows: 2,
+                totalCount: 3,
+                items: { item }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const notices = await client.searchNotices({ from: "2026-05-01", to: "2026-05-31", numOfRows: 2 });
+
+    expect(notices.map((notice) => notice.bidNtceNo)).toEqual(["20260500001", "20260500002", "20260500003"]);
+    expect(requestedUrls.map((url) => new URL(url).searchParams.get("pageNo"))).toEqual(["1", "2"]);
   });
 
   it("throws the public data API result message when the API returns an error code", async () => {
