@@ -9,10 +9,12 @@ import { loadSampleRawNotices } from "../nara/sample-client.js";
 import { normalizeNotices } from "../normalize/notice-normalizer.js";
 import { buildNoticeExportRows } from "../export/csv-exporter.js";
 import { buildSynapViewerUrl } from "./synap-viewer.js";
+import { isG2bAttachmentDownloadUrl, resolveG2bSynapViewerUrl } from "./g2b-synap-resolver.js";
 
 export type CreateWebAppOptions = {
   enableVite?: boolean;
   env?: Record<string, string | undefined>;
+  fetch?: typeof fetch;
 };
 
 export async function createWebApp(options: CreateWebAppOptions = {}): Promise<Express> {
@@ -74,12 +76,23 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     response.send(buffer);
   });
 
-  app.get("/api/viewer-url", (request, response) => {
+  app.get("/api/viewer-url", async (request, response) => {
     const sourceUrl = readQueryString(request.query.url);
     const title = readQueryString(request.query.title);
     const template = options.env?.SYNAP_VIEWER_URL_TEMPLATE ?? process.env.SYNAP_VIEWER_URL_TEMPLATE;
 
     try {
+      if (isG2bAttachmentDownloadUrl(sourceUrl)) {
+        const viewerUrl = await resolveG2bSynapViewerUrl({ sourceUrl, fetchImpl: options.fetch });
+        if (!viewerUrl) {
+          response.status(502).json({ error: "나라장터 Synap 공고문 링크를 만들지 못했습니다." });
+          return;
+        }
+
+        response.json(buildSynapViewerUrl({ sourceUrl: viewerUrl, title }, { template }));
+        return;
+      }
+
       response.json(buildSynapViewerUrl({ sourceUrl, title }, { template }));
     } catch (error) {
       response.status(400).json({ error: error instanceof Error ? error.message : String(error) });
