@@ -1,0 +1,57 @@
+# Changelog
+
+## v0.3.0
+
+Release focused on practical Excel/CSV review output for Nara procurement notices.
+
+### Added
+
+- D-Day calculation from notice deadline
+- Fixed 10-column CSV/Excel export format
+- Korean display labels for notice type
+- Excel output with header, filter, column width, and budget number-format settings
+- Sample CSV and XLSX outputs
+- Beginner-friendly Korean documentation
+- Nara API key setup guide
+
+### Output columns
+
+- D-Day
+- 공고번호
+- 공고명
+- 구분
+- 기관명
+- 지역
+- 예산
+- 마감일
+- 업종제한
+- 원문링크
+
+### Notes
+
+This release focuses on notice collection, basic classification, D-Day calculation, and export.
+Advanced project matching, related-notice matching, or sales opportunity scoring is not included.
+
+## v0.2.0
+
+### Added
+
+- Nara API client structure
+- `NARA_API_KEY` environment variable handling
+- Search date and keyword options for collect mode
+- Mock-based API client tests
+- Korean Nara API key setup documentation
+
+## v0.1.0
+
+### Added
+
+- Node.js 20+ TypeScript project scaffold
+- Dummy sample notice data
+- Normalized notice types
+- Field normalization
+- Basic construction/goods/service/unknown classification
+- CSV export
+- Excel export
+- Basic CLI
+- Test setup with Vitest
