@@ -102,7 +102,7 @@ describe("notice normalizer", () => {
       industryRestriction: "건축공사업",
       sourceUrl: "https://example.com/notices/20260500001",
       dDay: "확인필요",
-      noticeType: "unknown"
+      noticeType: "construction"
     });
     expect(notice.raw?.bidNtceNo).toBe(" 20260500001 ");
   });
