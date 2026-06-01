@@ -20,7 +20,7 @@ describe("CSV exporter", () => {
       "구분": "물품",
       "기관명": "OO시청",
       "지역": "서울특별시",
-      "예산": 1000,
+      "예산": "1,000",
       "마감일": "2026-06-01 오전 10:00",
       "업종제한": "",
       "원문링크": "https://example.com/B"
@@ -41,11 +41,12 @@ describe("CSV exporter", () => {
 
   it("exports CSV with fixed headers and escaped values", () => {
     const csv = exportNoticesToCsv([
-      notice({ title: "자동제어 장비, 구매", noticeId: "20260500002" })
+      notice({ title: "자동제어 장비, 구매", noticeId: "20260500002", budget: 120000000 })
     ]);
 
     expect(csv.split("\n")[0]).toBe(EXPORT_COLUMNS.join(","));
     expect(csv).toContain("\"자동제어 장비, 구매\"");
+    expect(csv).toContain("\"120,000,000\"");
   });
 });
 

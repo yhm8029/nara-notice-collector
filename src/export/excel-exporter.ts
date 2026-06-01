@@ -43,8 +43,12 @@ function createExcelWriter(notices: NormalizedNotice[]) {
 function rowToSheetRow(row: NoticeExportRow): Row {
   return EXPORT_COLUMNS.map((column) => {
     const value = row[column];
-    if ((column === "예산" || column === "No.") && typeof value === "number") {
+    if (column === "No." && typeof value === "number") {
       return { value, type: Number, format: "#,##0" };
+    }
+
+    if (column === "예산" && typeof value === "string" && value) {
+      return { value: Number(value.replaceAll(",", "")), type: Number, format: "#,##0" };
     }
 
     return { value: String(value), type: String };

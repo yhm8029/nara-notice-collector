@@ -35,7 +35,7 @@ export type NoticeExportRow = {
   "구분": string;
   "기관명": string;
   "지역": string;
-  "예산": number | "";
+  "예산": string;
   "마감일": string;
   "업종제한": string;
   "원문링크": string;
