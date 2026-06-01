@@ -66,7 +66,7 @@ describe("local web server API", () => {
     const app = await createWebApp({
       enableVite: false,
       env: {
-        SYNAP_VIEWER_URL_TEMPLATE: "https://viewer.example.com/view?url={url}&title={title}"
+        SYNAP_VIEWER_URL_TEMPLATE: "https://synap.example.com/view?url={url}&title={title}"
       }
     });
 
@@ -80,23 +80,18 @@ describe("local web server API", () => {
 
     expect(response.body.mode).toBe("synap");
     expect(response.body.viewerUrl).toContain("/viewer?");
-    expect(decodeURIComponent(response.body.viewerUrl)).toContain("https://viewer.example.com/view?");
+    expect(decodeURIComponent(response.body.viewerUrl)).toContain("https://synap.example.com/view?");
   });
 
-  it("falls back to the source URL when Synap is not configured", async () => {
+  it("does not open a non-Synap source URL when Synap is not configured", async () => {
     const app = await createWebApp({ enableVite: false, env: {} });
 
     const response = await request(app)
       .get("/api/viewer-url")
       .query({ url: "https://example.com/notices/20260500002", title: "공고" })
-      .expect(200);
+      .expect(502);
 
-    expect(response.body).toEqual({
-      mode: "source",
-      viewerUrl:
-        "/viewer?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500002&title=%EA%B3%B5%EA%B3%A0",
-      message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
-    });
+    expect(response.body.error).toBe("Synap 공고문 보기 URL이 없어 다운로드를 차단했습니다.");
   });
 
   it("resolves G2B attachment download URLs to Synap viewer URLs", async () => {
@@ -148,6 +143,20 @@ describe("local web server API", () => {
     expect(response.header["content-disposition"]).toBeUndefined();
     expect(response.text).toContain("<iframe");
     expect(response.text).toContain(synapUrl.replaceAll("&", "&amp;"));
+  });
+
+  it("rejects non-Synap document URLs on the local viewer page", async () => {
+    const app = await createWebApp({ enableVite: false, env: {} });
+
+    const response = await request(app)
+      .get("/viewer")
+      .query({
+        url: "https://www.g2b.go.kr/pn/pnp/pnpe/UntyAtchFile/downloadFile.do?bidPbancNo=R26BK01257874&fileSeq=1",
+        title: "공고문"
+      })
+      .expect(400);
+
+    expect(response.body.error).toBe("Synap 공고문 보기 URL만 열 수 있습니다.");
   });
 
   it("does not open a G2B attachment download URL when Synap resolution fails", async () => {
