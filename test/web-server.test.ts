@@ -62,4 +62,41 @@ describe("local web server API", () => {
     );
     expect(Number(response.header["content-length"])).toBeGreaterThan(1000);
   });
+
+  it("returns a Synap viewer URL from the configured template", async () => {
+    const app = await createWebApp({
+      enableVite: false,
+      env: {
+        SYNAP_VIEWER_URL_TEMPLATE: "https://viewer.example.com/view?url={url}&title={title}"
+      }
+    });
+
+    const response = await request(app)
+      .get("/api/viewer-url")
+      .query({
+        url: "https://example.com/notices/20260500001",
+        title: "자동제어 장비 구매"
+      })
+      .expect(200);
+
+    expect(response.body.mode).toBe("synap");
+    expect(response.body.viewerUrl).toBe(
+      "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001&title=%EC%9E%90%EB%8F%99%EC%A0%9C%EC%96%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
+    );
+  });
+
+  it("falls back to the source URL when Synap is not configured", async () => {
+    const app = await createWebApp({ enableVite: false, env: {} });
+
+    const response = await request(app)
+      .get("/api/viewer-url")
+      .query({ url: "https://example.com/notices/20260500002", title: "공고" })
+      .expect(200);
+
+    expect(response.body).toEqual({
+      mode: "source",
+      viewerUrl: "https://example.com/notices/20260500002",
+      message: "SYNAP_VIEWER_URL_TEMPLATE is not configured. Opening the original notice link."
+    });
+  });
 });

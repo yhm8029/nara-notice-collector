@@ -1,12 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Local web UI notice document button with configurable Synap viewer URL template
+
 ## v0.3.0
 
 Release focused on practical Excel/CSV review output for Nara procurement notices.
 
 ### Added
 
-- D-Day calculation from notice deadline
+- Sequential `No.` column for review output
 - Fixed 10-column CSV/Excel export format
 - Korean display labels for notice type
 - Excel output with header, filter, column width, and budget number-format settings
@@ -16,7 +22,7 @@ Release focused on practical Excel/CSV review output for Nara procurement notice
 
 ### Output columns
 
-- D-Day
+- No.
 - 공고번호
 - 공고명
 - 구분
@@ -29,7 +35,7 @@ Release focused on practical Excel/CSV review output for Nara procurement notice
 
 ### Notes
 
-This release focuses on notice collection, basic classification, D-Day calculation, and export.
+This release focuses on notice collection, basic classification, row numbering, and export.
 Advanced project matching, related-notice matching, or sales opportunity scoring is not included.
 
 ## v0.2.0
@@ -50,7 +56,7 @@ Advanced project matching, related-notice matching, or sales opportunity scoring
 - Dummy sample notice data
 - Normalized notice types
 - Field normalization
-- Basic construction/goods/service/unknown classification
+- Basic construction/goods/service/domestic classification
 - CSV export
 - Excel export
 - Basic CLI
