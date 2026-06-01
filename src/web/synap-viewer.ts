@@ -19,6 +19,13 @@ export function buildSynapViewerUrl(input: ViewerUrlInput, config: SynapViewerCo
   const sourceUrl = normalizeSourceUrl(input.sourceUrl);
   const template = config.template?.trim();
 
+  if (isG2bSynapViewerUrl(sourceUrl)) {
+    return {
+      mode: "synap",
+      viewerUrl: sourceUrl
+    };
+  }
+
   if (!template) {
     return {
       mode: "source",
@@ -57,4 +64,13 @@ function normalizeSourceUrl(sourceUrl: string): string {
   }
 
   return parsed.href;
+}
+
+function isG2bSynapViewerUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.hostname.endsWith("g2b.go.kr") && url.pathname.includes("/SynapDocViewServer/viewer/doc.html");
+  } catch {
+    return false;
+  }
 }

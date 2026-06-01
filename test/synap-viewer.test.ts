@@ -33,6 +33,16 @@ describe("Synap viewer URL builder", () => {
     });
   });
 
+  it("opens a Nara Synap viewer URL directly when the API already provides one", () => {
+    const viewerUrl =
+      "https://www.g2b.go.kr/SynapDocViewServer/viewer/doc.html?key=3d3edcc457ef46d28e1077ee2076d23b&convType=img&convLocale=ko_KR&contextPath=/SynapDocViewServer";
+
+    expect(buildSynapViewerUrl({ sourceUrl: viewerUrl, title: "공고문" })).toEqual({
+      mode: "synap",
+      viewerUrl
+    });
+  });
+
   it("rejects missing or unsafe source URLs", () => {
     expect(() => buildSynapViewerUrl({ sourceUrl: "", title: "공고" })).toThrow("공고문 링크가 필요합니다");
     expect(() => buildSynapViewerUrl({ sourceUrl: "file:///C:/secret.pdf", title: "공고" })).toThrow(

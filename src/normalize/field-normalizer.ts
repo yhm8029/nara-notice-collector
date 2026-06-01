@@ -49,14 +49,20 @@ export function normalizeDate(value: unknown): string | undefined {
 
 export function normalizeIndustryRestriction(raw: Record<string, unknown>): string | undefined {
   const restrictions: string[] = [];
-  const industryNames = uniqueTexts(raw.indstrytyLmtNm, raw.indstrytyNm);
+  const industryNames = uniqueTexts(raw.indstrytyLmtNm, raw.indstrytyNm, raw.tmpNm);
   if (industryNames.length > 0) {
     restrictions.push(`업종: ${industryNames.join(", ")}`);
   }
 
+  const mainFieldNames = uniqueTexts(raw.indstrytyMfrcFldNm, raw.IndstrytyMfrcFldNm);
+  if (mainFieldNames.length > 0) {
+    restrictions.push(`주력분야: ${mainFieldNames.join(", ")}`);
+  }
+
+  const procurementClassification = formatProcurementClassification(raw);
   const hasRestriction = normalizeText(raw.indstrytyLmtYn)?.toUpperCase();
-  if (hasRestriction === "Y" && industryNames.length === 0) {
-    restrictions.push("업종제한 있음");
+  if (hasRestriction === "Y" && industryNames.length === 0 && mainFieldNames.length === 0) {
+    restrictions.push(procurementClassification ? `업종/분류: ${procurementClassification}` : "업종제한 있음");
   }
 
   const regionNames = uniqueTexts(raw.prtcptLmtRgnNm, raw.rgnLmtBidLocplcJdgmBssNm);
@@ -65,7 +71,14 @@ export function normalizeIndustryRestriction(raw: Record<string, unknown>): stri
   }
 
   if (normalizeText(raw.prdctClsfcLmtYn)?.toUpperCase() === "Y") {
-    restrictions.push("물품분류제한 있음");
+    const productClassifications = normalizeProductClassifications(raw);
+    if (productClassifications.length > 0) {
+      restrictions.push(`물품분류: ${productClassifications.join(", ")}`);
+    } else if (procurementClassification) {
+      restrictions.push(`물품분류: ${procurementClassification}`);
+    } else {
+      restrictions.push("물품분류제한 있음");
+    }
   }
 
   if (normalizeText(raw.bidPrtcptLmtYn)?.toUpperCase() === "Y") {
@@ -81,6 +94,52 @@ export function normalizeIndustryRestriction(raw: Record<string, unknown>): stri
 
 function uniqueTexts(...values: unknown[]): string[] {
   return [...new Set(values.map((value) => normalizeText(value)).filter((value): value is string => Boolean(value)))];
+}
+
+function normalizeProductClassifications(raw: Record<string, unknown>): string[] {
+  const products = [
+    ...parsePurchaseProductList(raw.purchsObjPrdctList),
+    formatNamedCode(raw.dtilPrdctClsfcNoNm, raw.dtilPrdctClsfcNo),
+    formatNamedCode(raw.prdctClsfcNoNm, raw.prdctClsfcNo)
+  ].filter((value): value is string => Boolean(value));
+
+  return [...new Set(products)];
+}
+
+function parsePurchaseProductList(value: unknown): string[] {
+  const text = normalizeText(value);
+  if (!text) {
+    return [];
+  }
+
+  const bracketedValues = [...text.matchAll(/\[([^\]]+)\]/g)].map((match) => match[1]);
+  const entries = bracketedValues.length > 0 ? bracketedValues : text.split(",");
+
+  return entries
+    .map((entry) => {
+      const parts = entry.split("^").map((part) => part.trim()).filter(Boolean);
+      return formatNamedCode(parts[2], parts[1]);
+    })
+    .filter((value): value is string => Boolean(value));
+}
+
+function formatProcurementClassification(raw: Record<string, unknown>): string | undefined {
+  const leaf = formatNamedCode(raw.pubPrcrmntClsfcNm, raw.pubPrcrmntClsfcNo);
+  const parts = [...uniqueTexts(raw.pubPrcrmntLrgClsfcNm, raw.pubPrcrmntMidClsfcNm), leaf].filter(
+    (value): value is string => Boolean(value)
+  );
+
+  return parts.length > 0 ? parts.join(" > ") : undefined;
+}
+
+function formatNamedCode(nameValue: unknown, codeValue: unknown): string | undefined {
+  const name = normalizeText(nameValue);
+  const code = normalizeText(codeValue);
+
+  if (name && code) {
+    return `${name}(${code})`;
+  }
+  return name ?? code;
 }
 
 function formatKstDateTime(date: Date): string {
