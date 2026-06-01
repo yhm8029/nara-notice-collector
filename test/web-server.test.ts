@@ -29,7 +29,7 @@ describe("local web server API", () => {
 
     const response = await request(app)
       .post("/api/collect")
-      .send({ from: "2026-05-01", to: "2026-05-31", keyword: "자동제어" })
+      .send({ from: "2026-05-01", to: "2026-05-31", keyword: "행정복지센터" })
       .expect(400);
 
     expect(response.body.error).toContain("NARA_API_KEY");
@@ -75,13 +75,13 @@ describe("local web server API", () => {
       .get("/api/viewer-url")
       .query({
         url: "https://example.com/notices/20260500001",
-        title: "자동제어 장비 구매"
+        title: "행정복지센터 안내 장비 구매"
       })
       .expect(200);
 
     expect(response.body.mode).toBe("synap");
     expect(response.body.viewerUrl).toBe(
-      "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001&title=%EC%9E%90%EB%8F%99%EC%A0%9C%EC%96%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
+      "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001&title=%ED%96%89%EC%A0%95%EB%B3%B5%EC%A7%80%EC%84%BC%ED%84%B0%20%EC%95%88%EB%82%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
     );
   });
 

@@ -35,7 +35,7 @@ describe("NaraApiClient", () => {
     const notices = await client.searchNotices({
       from: "2026-05-01",
       to: "2026-05-31",
-      keyword: "자동제어"
+      keyword: "행정복지센터"
     });
 
     expect(notices).toHaveLength(4);
@@ -53,7 +53,7 @@ describe("NaraApiClient", () => {
     expect(requestedUrls[0]).toContain("serviceKey=sample-key");
     expect(requestedUrls[0]).toContain("inqryBgnDt=20260501");
     expect(requestedUrls[0]).toContain("inqryEndDt=20260531");
-    expect(decodeURIComponent(requestedUrls[0] ?? "")).toContain("bidNtceNm=자동제어");
+    expect(decodeURIComponent(requestedUrls[0] ?? "")).toContain("bidNtceNm=행정복지센터");
   });
 
   it("deduplicates notices by notice id", async () => {

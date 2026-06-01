@@ -28,7 +28,7 @@ $env:NARA_API_KEY="사용자_나라장터_API_키"
 npx nara-notice-collector collect \
   --from 2026-05-01 \
   --to 2026-05-31 \
-  --keyword 자동제어 \
+  --keyword 행정복지센터 \
   --format xlsx \
   --output ./output/notices.xlsx
 ```

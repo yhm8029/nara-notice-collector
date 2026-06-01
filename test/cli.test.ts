@@ -38,7 +38,7 @@ describe("CLI", () => {
     const messages: string[] = [];
 
     const exitCode = await runCli(
-      ["collect", "--from", "2026-05-01", "--to", "2026-05-31", "--keyword", "자동제어", "--output", "unused.xlsx"],
+      ["collect", "--from", "2026-05-01", "--to", "2026-05-31", "--keyword", "행정복지센터", "--output", "unused.xlsx"],
       {
         env: {},
         stderr: (message) => messages.push(message)

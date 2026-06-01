@@ -16,7 +16,7 @@ describe("CSV exporter", () => {
     expect(rows[0]).toEqual({
       "No.": 1,
       "공고번호": "B",
-      "공고명": "자동제어 장비 구매",
+      "공고명": "행정복지센터 안내 장비 구매",
       "구분": "물품",
       "기관명": "OO시청",
       "지역": "서울특별시",
@@ -41,11 +41,11 @@ describe("CSV exporter", () => {
 
   it("exports CSV with fixed headers and escaped values", () => {
     const csv = exportNoticesToCsv([
-      notice({ title: "자동제어 장비, 구매", noticeId: "20260500002", budget: 120000000 })
+      notice({ title: "행정복지센터 안내 장비, 구매", noticeId: "20260500002", budget: 120000000 })
     ]);
 
     expect(csv.split("\n")[0]).toBe(EXPORT_COLUMNS.join(","));
-    expect(csv).toContain("\"자동제어 장비, 구매\"");
+    expect(csv).toContain("\"행정복지센터 안내 장비, 구매\"");
     expect(csv).toContain("\"120,000,000\"");
   });
 });
@@ -54,7 +54,7 @@ function notice(overrides: Partial<NormalizedNotice> = {}): NormalizedNotice {
   const noticeId = overrides.noticeId ?? "A";
   return {
     noticeId,
-    title: "자동제어 장비 구매",
+    title: "행정복지센터 안내 장비 구매",
     noticeType: "goods",
     agency: "OO시청",
     region: "서울특별시",
