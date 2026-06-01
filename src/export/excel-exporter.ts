@@ -8,6 +8,14 @@ const COLUMN_WIDTHS = [12, 16, 42, 12, 24, 18, 16, 22, 24, 42];
 type ExcelFileContent = Stream | Buffer | Blob;
 
 export async function exportNoticesToExcel(notices: NormalizedNotice[], outputPath: string): Promise<void> {
+  await createExcelWriter(notices).toFile(outputPath);
+}
+
+export async function exportNoticesToExcelBuffer(notices: NormalizedNotice[]): Promise<Buffer> {
+  return createExcelWriter(notices).toBuffer();
+}
+
+function createExcelWriter(notices: NormalizedNotice[]) {
   const rows = buildNoticeExportRows(notices);
   const sheetData: Row[] = [
     EXPORT_COLUMNS.map((column) => ({
@@ -19,7 +27,7 @@ export async function exportNoticesToExcel(notices: NormalizedNotice[], outputPa
     ...rows.map(rowToSheetRow)
   ];
 
-  await writeXlsxFile(
+  return writeXlsxFile(
     sheetData,
     {
       sheet: "notices",
@@ -29,7 +37,7 @@ export async function exportNoticesToExcel(notices: NormalizedNotice[], outputPa
     {
       features: [createAutoFilterFeature(sheetData.length)]
     }
-  ).toFile(outputPath);
+  );
 }
 
 function rowToSheetRow(row: NoticeExportRow): Row {

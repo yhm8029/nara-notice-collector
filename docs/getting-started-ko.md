@@ -34,13 +34,27 @@ API 키 없이 더미 공고로 실행할 수 있습니다.
 npm run sample -- --format xlsx --output ./output/sample-notices.xlsx
 ```
 
-## 5. 샘플 CSV 만들기
+## 5. 로컬 웹 화면 실행
+
+터미널 명령 대신 브라우저 화면에서 샘플 공고를 확인하고 파일을 내려받을 수 있습니다.
+
+```powershell
+npm run web
+```
+
+실행 후 브라우저에서 아래 주소를 엽니다.
+
+```text
+http://127.0.0.1:5173
+```
+
+## 6. 샘플 CSV 만들기
 
 ```powershell
 npm run sample -- --format csv --output ./output/sample-notices.csv
 ```
 
-## 6. 결과 파일 확인
+## 7. 결과 파일 확인
 
 `output` 폴더에 파일이 생성됩니다.
 

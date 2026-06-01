@@ -18,7 +18,9 @@
     "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
-    "sample": "tsx src/cli.ts sample"
+    "sample": "tsx src/cli.ts sample",
+    "web": "tsx src/web/server.ts",
+    "web:build": "vite build"
   },
   "engines": {
     "node": ">=20"
@@ -31,13 +33,24 @@
     "excel"
   ],
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^24.0.0",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "@types/supertest": "^7.2.0",
+    "@vitejs/plugin-react": "^6.0.2",
     "read-excel-file": "^9.0.10",
+    "supertest": "^7.2.2",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0",
     "vitest": "^4.1.8"
   },
   "dependencies": {
+    "express": "^5.2.1",
+    "lucide-react": "^1.17.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "vite": "^8.0.16",
     "write-excel-file": "^4.0.7"
   }
 }
