@@ -114,7 +114,7 @@ describe("notice normalizer", () => {
   it("handles empty optional fields safely", () => {
     const notice = normalizeNotice({
       bidNtceNo: "20260500002",
-      bidNtceNm: "자동제어 장비 구매",
+      bidNtceNm: "행정복지센터 안내 장비 구매",
       ntceInsttNm: "OO시청",
       presmptPrce: "",
       bidClseDt: "",

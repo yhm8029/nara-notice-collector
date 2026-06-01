@@ -58,7 +58,7 @@ export function App() {
   const [notices, setNotices] = useState<NormalizedNotice[]>([]);
   const [from, setFrom] = useState("2026-05-01");
   const [to, setTo] = useState("2026-05-31");
-  const [keyword, setKeyword] = useState("자동제어");
+  const [keyword, setKeyword] = useState("행정복지센터");
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");

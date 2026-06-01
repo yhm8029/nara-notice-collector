@@ -6,7 +6,7 @@ describe("Synap viewer URL builder", () => {
     const result = buildSynapViewerUrl(
       {
         sourceUrl: "https://example.com/notices/20260500001?file=공고문.pdf",
-        title: "자동제어 장비 구매"
+        title: "행정복지센터 안내 장비 구매"
       },
       {
         template: "https://viewer.example.com/view?url={url}&title={title}"
@@ -16,7 +16,7 @@ describe("Synap viewer URL builder", () => {
     expect(result).toEqual({
       mode: "synap",
       viewerUrl:
-        "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001%3Ffile%3D%25EA%25B3%25B5%25EA%25B3%25A0%25EB%25AC%25B8.pdf&title=%EC%9E%90%EB%8F%99%EC%A0%9C%EC%96%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
+        "https://viewer.example.com/view?url=https%3A%2F%2Fexample.com%2Fnotices%2F20260500001%3Ffile%3D%25EA%25B3%25B5%25EA%25B3%25A0%25EB%25AC%25B8.pdf&title=%ED%96%89%EC%A0%95%EB%B3%B5%EC%A7%80%EC%84%BC%ED%84%B0%20%EC%95%88%EB%82%B4%20%EC%9E%A5%EB%B9%84%20%EA%B5%AC%EB%A7%A4"
     });
   });
 

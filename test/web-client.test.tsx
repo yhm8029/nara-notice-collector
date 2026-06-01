@@ -11,6 +11,8 @@ describe("web client", () => {
     expect(html).toContain("CSV");
     expect(html).toContain("Excel");
     expect(html).toContain("공고문");
+    expect(html).toContain("행정복지센터");
+    expect(html).not.toContain("자동제어");
     expect(html).not.toContain("임박");
   });
 });

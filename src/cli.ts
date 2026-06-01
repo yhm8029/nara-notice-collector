@@ -151,7 +151,7 @@ function helpText(): string {
   return [
     "Usage:",
     "  nara-notice-collector sample --format csv|xlsx --output ./output/sample-notices.xlsx",
-    "  nara-notice-collector collect --from YYYY-MM-DD --to YYYY-MM-DD --keyword 자동제어 --format xlsx --output ./output/notices.xlsx"
+    "  nara-notice-collector collect --from YYYY-MM-DD --to YYYY-MM-DD --keyword 행정복지센터 --format xlsx --output ./output/notices.xlsx"
   ].join("\n");
 }
 
