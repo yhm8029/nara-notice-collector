@@ -15,7 +15,6 @@ describe("local web server API", () => {
       "공고명",
       "구분",
       "기관명",
-      "지역",
       "예산",
       "마감일",
       "업종제한",
@@ -32,7 +31,7 @@ describe("local web server API", () => {
       .send({ from: "2026-05-01", to: "2026-05-31", keyword: "행정복지센터" })
       .expect(400);
 
-    expect(response.body.error).toContain("NARA_API_KEY");
+    expect(response.body.error).toBe("API 키를 입력하거나 로컬 환경변수 NARA_API_KEY를 설정하세요.");
   });
 
   it("exports the posted notices as CSV", async () => {
@@ -45,7 +44,7 @@ describe("local web server API", () => {
       .expect(200);
 
     expect(response.header["content-type"]).toContain("text/csv");
-    expect(response.text.split("\n")[0]).toBe("No.,공고번호,공고명,구분,기관명,지역,예산,마감일,업종제한,원문링크");
+    expect(response.text.split("\n")[0]).toBe("No.,공고번호,공고명,구분,기관명,예산,마감일,업종제한,원문링크");
   });
 
   it("exports the posted notices as XLSX", async () => {
@@ -96,7 +95,7 @@ describe("local web server API", () => {
     expect(response.body).toEqual({
       mode: "source",
       viewerUrl: "https://example.com/notices/20260500002",
-      message: "SYNAP_VIEWER_URL_TEMPLATE is not configured. Opening the original notice link."
+      message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
     });
   });
 });

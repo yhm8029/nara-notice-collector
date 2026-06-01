@@ -29,14 +29,14 @@ describe("Synap viewer URL builder", () => {
     expect(result).toEqual({
       mode: "source",
       viewerUrl: "https://example.com/notices/20260500002",
-      message: "SYNAP_VIEWER_URL_TEMPLATE is not configured. Opening the original notice link."
+      message: "Synap 문서뷰어 설정이 없어 공고문 링크를 직접 엽니다."
     });
   });
 
   it("rejects missing or unsafe source URLs", () => {
-    expect(() => buildSynapViewerUrl({ sourceUrl: "", title: "공고" })).toThrow("sourceUrl is required");
+    expect(() => buildSynapViewerUrl({ sourceUrl: "", title: "공고" })).toThrow("공고문 링크가 필요합니다");
     expect(() => buildSynapViewerUrl({ sourceUrl: "file:///C:/secret.pdf", title: "공고" })).toThrow(
-      "http or https"
+      "http 또는 https"
     );
   });
 
@@ -46,6 +46,6 @@ describe("Synap viewer URL builder", () => {
         { sourceUrl: "https://example.com/notices/20260500003", title: "공고" },
         { template: "https://viewer.example.com/view" }
       )
-    ).toThrow("{url}");
+    ).toThrow("Synap 문서뷰어 URL 템플릿");
   });
 });

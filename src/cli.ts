@@ -75,9 +75,7 @@ async function runCollectCommand(
   const keyword = typeof options.keyword === "string" ? options.keyword : undefined;
 
   if (!env.NARA_API_KEY) {
-    throw new Error(
-      "NARA_API_KEY is required for collect mode. Set NARA_API_KEY or run the sample command without an API key."
-    );
+    throw new Error("API 키가 필요합니다. NARA_API_KEY를 설정하거나 샘플 명령을 사용하세요.");
   }
 
   const client = createNaraClientFromEnv(env);

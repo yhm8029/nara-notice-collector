@@ -3,7 +3,7 @@ import { NaraApiClient, createNaraClientFromEnv } from "../src/nara/client.js";
 
 describe("NaraApiClient", () => {
   it("throws a clear error when the API key is missing", () => {
-    expect(() => createNaraClientFromEnv({})).toThrow(/NARA_API_KEY/);
+    expect(() => createNaraClientFromEnv({})).toThrow(/API 키/);
   });
 
   it("builds public-data requests for each Nara notice business endpoint and returns typed raw notice items", async () => {

@@ -7,7 +7,6 @@ type NoticeRow = {
   "공고명": string;
   "구분": string;
   "기관명": string;
-  "지역": string;
   "예산": string;
   "마감일": string;
   "업종제한": string;
@@ -24,6 +23,7 @@ type NormalizedNotice = {
   deadline?: string;
   industryRestriction?: string;
   sourceUrl?: string;
+  documentUrl?: string;
   raw?: Record<string, unknown>;
 };
 
@@ -44,7 +44,6 @@ const columns: (keyof NoticeRow)[] = [
   "공고명",
   "구분",
   "기관명",
-  "지역",
   "예산",
   "마감일",
   "업종제한",
@@ -135,15 +134,17 @@ export function App() {
   }
 
   async function openNoticeDocument(row: NoticeRow) {
-    if (!row["원문링크"]) {
-      setError("원문링크가 없는 공고입니다.");
+    const notice = notices.find((notice) => notice.noticeId === row["공고번호"]);
+    const documentUrl = notice?.documentUrl ?? row["원문링크"];
+    if (!documentUrl) {
+      setError("공고문 링크가 없는 공고입니다.");
       return;
     }
 
     setError("");
     try {
       const payload = await fetchJson<ViewerUrlPayload>(
-        `/api/viewer-url?url=${encodeURIComponent(row["원문링크"])}&title=${encodeURIComponent(row["공고명"])}`
+        `/api/viewer-url?url=${encodeURIComponent(documentUrl)}&title=${encodeURIComponent(row["공고명"])}`
       );
       window.open(payload.viewerUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
@@ -253,7 +254,13 @@ export function App() {
                 <tr key={row["공고번호"]}>
                   {columns.map((column) => (
                     <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
-                      {row[column]}
+                      {column === "원문링크" && row[column] ? (
+                        <a href={row[column]} target="_blank" rel="noreferrer">
+                          열기
+                        </a>
+                      ) : (
+                        row[column]
+                      )}
                     </td>
                   ))}
                   <td>
@@ -261,8 +268,8 @@ export function App() {
                       className="compact"
                       type="button"
                       onClick={() => void openNoticeDocument(row)}
-                      disabled={!row["원문링크"]}
-                      title="Synap 설정이 있으면 Synap 뷰어로 열고, 없으면 원문 링크를 엽니다."
+                      disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl && !row["원문링크"]}
+                      title="Synap 설정이 있으면 공고문 파일을 Synap 뷰어로 열고, 없으면 공고문 파일 링크를 엽니다."
                     >
                       <ExternalLink size={16} />
                       보기

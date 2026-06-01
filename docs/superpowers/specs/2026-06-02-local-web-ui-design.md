@@ -29,7 +29,7 @@ Excluded:
 
 ## UI
 
-The screen is an operational workspace, not a landing page. It has a compact top bar, a filter/action area, status counts, and a dense table. Controls use normal form inputs and icon buttons where useful. The table keeps the fixed columns: `No.`, `공고번호`, `공고명`, `구분`, `기관명`, `지역`, `예산`, `마감일`, `업종제한`, `원문링크`.
+The screen is an operational workspace, not a landing page. It has a compact top bar, a filter/action area, status counts, and a dense table. Controls use normal form inputs and icon buttons where useful. The table keeps the fixed columns: `No.`, `공고번호`, `공고명`, `구분`, `기관명`, `예산`, `마감일`, `업종제한`, `원문링크`.
 
 ## Data Flow
 
