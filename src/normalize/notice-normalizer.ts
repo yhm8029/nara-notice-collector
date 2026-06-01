@@ -1,6 +1,5 @@
 import type { NormalizedNotice, RawNaraNotice } from "../nara/types.js";
 import { classifyNoticeType } from "../classify/notice-type-classifier.js";
-import { calculateDday } from "../utils/dday.js";
 import {
   normalizeDate,
   normalizeIndustryRestriction,
@@ -17,7 +16,6 @@ export function normalizeNotice(raw: RawNaraNotice, options: NormalizeNoticeOpti
   const deadline = normalizeDate(raw.bidClseDt);
 
   return {
-    dDay: calculateDday(deadline, options.baseDate),
     noticeId: normalizeText(raw.bidNtceNo) ?? "",
     title,
     noticeType: classifyNoticeType(title),

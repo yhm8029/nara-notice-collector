@@ -1,4 +1,4 @@
-export type NoticeType = "construction" | "goods" | "service" | "unknown";
+export type NoticeType = "construction" | "goods" | "service" | "domestic";
 
 export type RawNaraNotice = Record<string, unknown> & {
   bidNtceNo?: string;
@@ -14,7 +14,6 @@ export type RawNaraNotice = Record<string, unknown> & {
 };
 
 export type NormalizedNotice = {
-  dDay: string;
   noticeId: string;
   title: string;
   noticeType: NoticeType;
@@ -28,7 +27,7 @@ export type NormalizedNotice = {
 };
 
 export type NoticeExportRow = {
-  "D-Day": string;
+  "No.": number;
   "공고번호": string;
   "공고명": string;
   "구분": string;

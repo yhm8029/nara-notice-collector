@@ -10,7 +10,7 @@ describe("local web server API", () => {
 
     expect(response.body.rows).toHaveLength(22);
     expect(Object.keys(response.body.rows[0])).toEqual([
-      "D-Day",
+      "No.",
       "공고번호",
       "공고명",
       "구분",
@@ -45,7 +45,7 @@ describe("local web server API", () => {
       .expect(200);
 
     expect(response.header["content-type"]).toContain("text/csv");
-    expect(response.text.split("\n")[0]).toBe("D-Day,공고번호,공고명,구분,기관명,지역,예산,마감일,업종제한,원문링크");
+    expect(response.text.split("\n")[0]).toBe("No.,공고번호,공고명,구분,기관명,지역,예산,마감일,업종제한,원문링크");
   });
 
   it("exports the posted notices as XLSX", async () => {

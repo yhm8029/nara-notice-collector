@@ -38,7 +38,7 @@ const SERVICE_KEYWORDS = [
 export function classifyNoticeType(title: string | undefined): NoticeType {
   const normalizedTitle = title?.trim() ?? "";
   if (!normalizedTitle) {
-    return "unknown";
+    return "domestic";
   }
 
   if (containsAny(normalizedTitle, CONSTRUCTION_KEYWORDS)) {
@@ -53,7 +53,7 @@ export function classifyNoticeType(title: string | undefined): NoticeType {
     return "service";
   }
 
-  return "unknown";
+  return "domestic";
 }
 
 export function noticeTypeToKorean(noticeType: NoticeType): string {
@@ -64,8 +64,8 @@ export function noticeTypeToKorean(noticeType: NoticeType): string {
       return "물품";
     case "service":
       return "용역";
-    case "unknown":
-      return "미분류";
+    case "domestic":
+      return "내자";
   }
 }
 

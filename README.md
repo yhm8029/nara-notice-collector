@@ -15,7 +15,6 @@ API나 개발 경험이 많지 않은 사람도 샘플 데이터를 실행해보
 
 * 공고를 하나씩 확인해야 해서 시간이 많이 걸림
 * 반복 작업이 많아 실수가 생기기 쉬움
-* 마감일이 임박한 공고를 놓칠 수 있음
 * 공사·물품·용역 구분을 매번 사람이 직접 확인해야 함
 * 공고 데이터를 다시 활용하기 어려움
 
@@ -32,8 +31,7 @@ API나 개발 경험이 많지 않은 사람도 샘플 데이터를 실행해보
 * 나라장터 공고 데이터 수집 구조 제공
 * 샘플 공고 데이터 실행 지원
 * 공고번호, 공고명, 기관명, 지역, 예산, 마감일, 업종제한 정리
-* 공고명을 기준으로 공사·물품·용역·미분류 기본 구분
-* 마감일 기준 D-Day 계산
+* 공고명을 기준으로 공사·물품·용역·내자 기본 구분
 * 실무 검토용 CSV 파일 생성
 * 실무 검토용 Excel 파일 생성
 * 초보자도 따라 할 수 있는 한국어 문서 제공
@@ -46,10 +44,10 @@ CSV/Excel 파일은 아래 컬럼 순서로 생성됩니다.
 
 | 컬럼 | 설명 |
 | --- | --- |
-| D-Day | 마감일까지 남은 기간 |
+| No. | 검토용 순번 |
 | 공고번호 | 나라장터 공고번호 |
 | 공고명 | 공고 제목 |
-| 구분 | 공사 / 물품 / 용역 / 미분류 |
+| 구분 | 공사 / 물품 / 용역 / 내자 |
 | 기관명 | 공고기관명 |
 | 지역 | 공고 지역 |
 | 예산 | 추정가격 또는 예산 |
@@ -169,31 +167,15 @@ docs/nara-api-key-ko.md
 * `공사`, `개축`, `증축`, `신축`, `보수`, `리모델링` 등이 포함되면 공사로 분류
 * `구매`, `제조`, `납품`, `물품`, `장비`, `기자재` 등이 포함되면 물품으로 분류
 * `용역`, `설계`, `감리`, `조사`, `점검`, `유지관리` 등이 포함되면 용역으로 분류
-* 명확하지 않은 경우 미분류로 남김
+* 위 세 가지에 명확히 속하지 않으면 내자로 분류
 
 이 분류는 실무 검토를 돕기 위한 기본 분류이며, 법적 판단이나 최종 입찰 검토를 대체하지 않습니다.
 
 ---
 
-## D-Day 계산 기준
-
-입찰 마감일을 기준으로 D-Day를 계산합니다.
-
-표시 예시는 다음과 같습니다.
-
-| 표시 | 의미 |
-| --- | --- |
-| D-Day | 오늘 마감 |
-| D-1 | 하루 뒤 마감 |
-| D-7 | 7일 뒤 마감 |
-| D+1 | 하루 전 마감 |
-| 확인필요 | 마감일이 없거나 날짜를 해석할 수 없음 |
-
----
-
 ## 프로젝트 범위
 
-이 프로젝트는 나라장터 공고의 **수집, 기본 분류, D-Day 계산, CSV/Excel 내보내기**에 집중합니다.
+이 프로젝트는 나라장터 공고의 **수집, 기본 분류, 순번 부여, CSV/Excel 내보내기**에 집중합니다.
 
 아래 기능은 의도적으로 포함하지 않습니다.
 
@@ -210,7 +192,7 @@ docs/nara-api-key-ko.md
 
 ## Out of scope
 
-This project focuses on public procurement notice collection, basic classification, D-Day calculation, and CSV/Excel export.
+This project focuses on public procurement notice collection, basic classification, row numbering, and CSV/Excel export.
 
 Advanced project identity resolution, related-notice matching, sales opportunity scoring, private customer workflows, and LLM-based business decision logic are intentionally out of scope.
 
@@ -222,8 +204,8 @@ Advanced project identity resolution, related-notice matching, sales opportunity
 
 1. 샘플 데이터로 공고 정리 흐름을 확인할 수 있게 만들기
 2. 나라장터 API 키를 연결해 실제 공고 수집 구조 제공
-3. 공고를 공사·물품·용역·미분류로 간단 구분
-4. 마감일 기준 D-Day를 계산
+3. 공고를 공사·물품·용역·내자로 간단 구분
+4. 검토하기 쉽도록 순번을 부여
 5. 실무자가 바로 열어볼 수 있는 CSV/Excel 파일 생성
 6. 초보자도 따라 할 수 있는 한국어 문서 제공
 

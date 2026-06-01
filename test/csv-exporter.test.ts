@@ -9,12 +9,12 @@ import type { NormalizedNotice } from "../src/nara/types.js";
 describe("CSV exporter", () => {
   it("builds fixed-column export rows in the required order", () => {
     const rows = buildNoticeExportRows([
-      notice({ dDay: "D-1", noticeId: "B", noticeType: "goods" })
+      notice({ noticeId: "B", noticeType: "goods" })
     ]);
 
     expect(Object.keys(rows[0])).toEqual(EXPORT_COLUMNS);
     expect(rows[0]).toEqual({
-      "D-Day": "D-1",
+      "No.": 1,
       "공고번호": "B",
       "공고명": "자동제어 장비 구매",
       "구분": "물품",
@@ -27,15 +27,16 @@ describe("CSV exporter", () => {
     });
   });
 
-  it("sorts by D-Day urgency, type, and notice id with 확인필요 at the bottom", () => {
+  it("sorts by notice id and numbers rows from 1", () => {
     const rows = buildNoticeExportRows([
-      notice({ dDay: "확인필요", noticeId: "Z", noticeType: "service" }),
-      notice({ dDay: "D-7", noticeId: "C", noticeType: "service" }),
-      notice({ dDay: "D-1", noticeId: "B", noticeType: "goods" }),
-      notice({ dDay: "D-Day", noticeId: "A", noticeType: "construction" })
+      notice({ noticeId: "Z", noticeType: "service" }),
+      notice({ noticeId: "C", noticeType: "service" }),
+      notice({ noticeId: "B", noticeType: "goods" }),
+      notice({ noticeId: "A", noticeType: "construction" })
     ]);
 
     expect(rows.map((row) => row["공고번호"])).toEqual(["A", "B", "C", "Z"]);
+    expect(rows.map((row) => row["No."])).toEqual([1, 2, 3, 4]);
   });
 
   it("exports CSV with fixed headers and escaped values", () => {
@@ -51,7 +52,6 @@ describe("CSV exporter", () => {
 function notice(overrides: Partial<NormalizedNotice> = {}): NormalizedNotice {
   const noticeId = overrides.noticeId ?? "A";
   return {
-    dDay: "D-Day",
     noticeId,
     title: "자동제어 장비 구매",
     noticeType: "goods",

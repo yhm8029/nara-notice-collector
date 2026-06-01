@@ -2,7 +2,7 @@ import { noticeTypeToKorean } from "../classify/notice-type-classifier.js";
 import type { NormalizedNotice, NoticeExportRow } from "../nara/types.js";
 
 export const EXPORT_COLUMNS = [
-  "D-Day",
+  "No.",
   "공고번호",
   "공고명",
   "구분",
@@ -17,8 +17,8 @@ export const EXPORT_COLUMNS = [
 export function buildNoticeExportRows(notices: NormalizedNotice[]): NoticeExportRow[] {
   return [...notices]
     .sort(compareNoticesForExport)
-    .map((notice) => ({
-      "D-Day": notice.dDay,
+    .map((notice, index) => ({
+      "No.": index + 1,
       "공고번호": notice.noticeId,
       "공고명": notice.title,
       "구분": noticeTypeToKorean(notice.noticeType),
@@ -41,31 +41,9 @@ export function exportNoticesToCsv(notices: NormalizedNotice[]): string {
 
 function compareNoticesForExport(a: NormalizedNotice, b: NormalizedNotice): number {
   return (
-    ddaySortValue(a.dDay) - ddaySortValue(b.dDay) ||
-    noticeTypeToKorean(a.noticeType).localeCompare(noticeTypeToKorean(b.noticeType), "ko") ||
-    a.noticeId.localeCompare(b.noticeId, "ko")
+    a.noticeId.localeCompare(b.noticeId, "ko") ||
+    noticeTypeToKorean(a.noticeType).localeCompare(noticeTypeToKorean(b.noticeType), "ko")
   );
-}
-
-function ddaySortValue(dDay: string): number {
-  if (dDay === "확인필요") {
-    return Number.MAX_SAFE_INTEGER;
-  }
-  if (dDay === "D-Day") {
-    return 0;
-  }
-
-  const future = /^D-(\d+)$/.exec(dDay);
-  if (future) {
-    return Number(future[1]);
-  }
-
-  const past = /^D\+(\d+)$/.exec(dDay);
-  if (past) {
-    return 100_000 + Number(past[1]);
-  }
-
-  return Number.MAX_SAFE_INTEGER;
 }
 
 function escapeCsvValue(value: NoticeExportRow[keyof NoticeExportRow]): string {

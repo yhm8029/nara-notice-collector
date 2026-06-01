@@ -20,9 +20,9 @@ describe("notice type classifier", () => {
     expect(classifyNoticeType("교통영향평가 컨설팅")).toBe("service");
   });
 
-  it("keeps ambiguous titles as unknown", () => {
-    expect(classifyNoticeType("스마트시티 플랫폼 구축")).toBe("unknown");
-    expect(classifyNoticeType("")).toBe("unknown");
+  it("classifies ambiguous titles as domestic procurement", () => {
+    expect(classifyNoticeType("스마트시티 플랫폼 구축")).toBe("domestic");
+    expect(classifyNoticeType("")).toBe("domestic");
   });
 
   it("applies construction before goods and service when multiple keywords appear", () => {
@@ -33,6 +33,6 @@ describe("notice type classifier", () => {
     expect(noticeTypeToKorean("construction")).toBe("공사");
     expect(noticeTypeToKorean("goods")).toBe("물품");
     expect(noticeTypeToKorean("service")).toBe("용역");
-    expect(noticeTypeToKorean("unknown")).toBe("미분류");
+    expect(noticeTypeToKorean("domestic")).toBe("내자");
   });
 });

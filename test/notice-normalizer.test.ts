@@ -22,7 +22,6 @@ describe("sample notice data", () => {
 
   it("defines the normalized notice and fixed export row contracts", () => {
     const notice: NormalizedNotice = {
-      dDay: "D-1",
       noticeId: "20260500001",
       title: "OO초등학교 그린스마트스쿨 개축공사",
       noticeType: "construction",
@@ -30,7 +29,7 @@ describe("sample notice data", () => {
     };
 
     const row: NoticeExportRow = {
-      "D-Day": notice.dDay,
+      "No.": 1,
       "공고번호": notice.noticeId,
       "공고명": notice.title,
       "구분": "공사",
@@ -43,7 +42,7 @@ describe("sample notice data", () => {
     };
 
     expect(row).toEqual({
-      "D-Day": "D-1",
+      "No.": 1,
       "공고번호": "20260500001",
       "공고명": "OO초등학교 그린스마트스쿨 개축공사",
       "구분": "공사",
@@ -104,7 +103,6 @@ describe("notice normalizer", () => {
       deadline: "2026-05-31T10:00:00",
       industryRestriction: "건축공사업",
       sourceUrl: "https://example.com/notices/20260500001",
-      dDay: "D-Day",
       noticeType: "construction"
     });
     expect(notice.raw?.bidNtceNo).toBe(" 20260500001 ");

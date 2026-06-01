@@ -2,7 +2,7 @@ import { Download, FileSpreadsheet, Loader2, Search, TableProperties } from "luc
 import { useMemo, useState } from "react";
 
 type NoticeRow = {
-  "D-Day": string;
+  "No.": number;
   "공고번호": string;
   "공고명": string;
   "구분": string;
@@ -15,10 +15,9 @@ type NoticeRow = {
 };
 
 type NormalizedNotice = {
-  dDay: string;
   noticeId: string;
   title: string;
-  noticeType: "construction" | "goods" | "service" | "unknown";
+  noticeType: "construction" | "goods" | "service" | "domestic";
   agency: string;
   region?: string;
   budget?: number;
@@ -34,7 +33,7 @@ type NoticePayload = {
 };
 
 const columns: (keyof NoticeRow)[] = [
-  "D-Day",
+  "No.",
   "공고번호",
   "공고명",
   "구분",
@@ -57,9 +56,11 @@ export function App() {
   const [loading, setLoading] = useState("");
 
   const summary = useMemo(() => {
-    const urgent = rows.filter((row) => row["D-Day"] === "D-Day" || row["D-Day"] === "D-1").length;
-    const needsCheck = rows.filter((row) => row["D-Day"] === "확인필요").length;
-    return { total: rows.length, urgent, needsCheck };
+    const construction = rows.filter((row) => row["구분"] === "공사").length;
+    const goods = rows.filter((row) => row["구분"] === "물품").length;
+    const service = rows.filter((row) => row["구분"] === "용역").length;
+    const domestic = rows.filter((row) => row["구분"] === "내자").length;
+    return { total: rows.length, construction, goods, service, domestic };
   }, [rows]);
 
   async function loadSample() {
@@ -187,12 +188,20 @@ export function App() {
           <strong>{summary.total}</strong>
         </div>
         <div>
-          <span>임박</span>
-          <strong>{summary.urgent}</strong>
+          <span>공사</span>
+          <strong>{summary.construction}</strong>
         </div>
         <div>
-          <span>확인필요</span>
-          <strong>{summary.needsCheck}</strong>
+          <span>물품</span>
+          <strong>{summary.goods}</strong>
+        </div>
+        <div>
+          <span>용역</span>
+          <strong>{summary.service}</strong>
+        </div>
+        <div>
+          <span>내자</span>
+          <strong>{summary.domestic}</strong>
         </div>
       </section>
 
