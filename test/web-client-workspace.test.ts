@@ -4,6 +4,7 @@ import {
   buildDeadlineBadge,
   deserializeNoticeMetadata,
   filterRowsByReviewStatus,
+  filterRowsByFavorites,
   filterAndSortRows,
   getExportNotices,
   getInitialReviewState,
@@ -82,6 +83,9 @@ describe("web workspace helpers", () => {
       "20260500001",
       "20260500002"
     ]);
+    expect(getExportNotices(notices, new Set(), new Set(["20260500001"]), true).map((item) => item.noticeId)).toEqual([
+      "20260500001"
+    ]);
   });
 
   it("builds specific user-facing status messages", () => {
@@ -135,6 +139,13 @@ describe("web workspace helpers", () => {
     expect(buildDeadlineBadge("2026-06-02", baseDate)).toEqual({ label: "오늘 마감", tone: "urgent" });
     expect(buildDeadlineBadge("2026-06-01", baseDate)).toEqual({ label: "마감 지남", tone: "muted" });
     expect(buildDeadlineBadge(undefined, baseDate)).toEqual({ label: "마감일 없음", tone: "muted" });
+  });
+
+  it("filters rows to favorites only", () => {
+    expect(filterRowsByFavorites(rows, new Set(["20260500003"]), true).map((item) => item["공고번호"])).toEqual([
+      "20260500003"
+    ]);
+    expect(filterRowsByFavorites(rows, new Set(["20260500003"]), false)).toHaveLength(3);
   });
 });
 

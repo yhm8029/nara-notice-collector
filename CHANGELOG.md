@@ -8,6 +8,7 @@
 - Notice review statuses for 미검토, 검토중, 관심, and 제외
 - Per-notice review memo and tag fields with local browser persistence
 - Deadline D-day badges for upcoming, same-day, overdue, and missing deadlines
+- Favorite notice toggles with favorites-only filtering and favorite-based export behavior
 - Release workflow that validates tagged releases, builds the web UI, packages the npm tarball, and publishes a GitHub release
 - Local web UI notice document button with configurable Synap viewer URL template
 - API business-division based notice type classification using Nara bid notice endpoints
