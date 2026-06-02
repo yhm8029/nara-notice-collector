@@ -1,0 +1,27 @@
+name: Feature request
+description: Suggest a new workflow or improvement for the notice collector.
+title: "feat: "
+labels:
+  - feature
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What notice review or export problem should this solve?
+      placeholder: "예: 관심 공고만 따로 검토하고 싶습니다."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the expected behavior in the local web UI or CLI.
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Acceptance checks
+      description: How should we know the feature is working?
+      placeholder: "- 샘플 데이터에서 ...\n- CSV 내보내기에서 ..."

@@ -1,0 +1,34 @@
+name: Bug report
+description: Report incorrect collection, review, export, or release behavior.
+title: "fix: "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current behavior
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include command, browser flow, sample/API mode, and dates or keyword.
+      placeholder: "1. npm run web\n2. 샘플 데이터 클릭\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Verification target
+      description: Which command or UI check should pass after the fix?
+      placeholder: "`npm test -- test/...`"
