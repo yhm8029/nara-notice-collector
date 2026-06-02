@@ -61,6 +61,11 @@ export type NoticeMetadata = {
   tags: string[];
 };
 
+export type DeadlineBadge = {
+  label: string;
+  tone: "normal" | "urgent" | "muted";
+};
+
 export const searchPresets: readonly { id: SearchPresetId; label: string }[] = [
   { id: "recent7Days", label: "최근 7일" },
   { id: "thisMonth", label: "이번 달" },
@@ -138,6 +143,31 @@ export function deserializeNoticeMetadata(value: string | undefined | null): Map
   } catch {
     return new Map();
   }
+}
+
+export function buildDeadlineBadge(deadline: string | undefined, baseDate = new Date()): DeadlineBadge {
+  if (!deadline) {
+    return { label: "마감일 없음", tone: "muted" };
+  }
+
+  const deadlineDate = parseDate(deadline);
+  if (!deadlineDate) {
+    return { label: "마감일 없음", tone: "muted" };
+  }
+
+  const current = toKoreanDateParts(baseDate);
+  const currentDate = new Date(Date.UTC(current.year, current.month - 1, current.day));
+  const days = Math.round((deadlineDate.getTime() - currentDate.getTime()) / 86_400_000);
+
+  if (days < 0) {
+    return { label: "마감 지남", tone: "muted" };
+  }
+
+  if (days === 0) {
+    return { label: "오늘 마감", tone: "urgent" };
+  }
+
+  return { label: `D-${days}`, tone: "normal" };
 }
 
 export function resolveSearchPreset(id: SearchPresetId, baseDate = new Date()): {
@@ -225,6 +255,15 @@ function compareText(left: string, right: string): number {
 function parseBudget(value: string): number {
   const parsed = Number(value.replace(/[^0-9.-]/g, ""));
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function parseDate(value: string): Date | undefined {
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) {
+    return undefined;
+  }
+
+  return new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
 }
 
 function toKoreanDateParts(date: Date): { year: number; month: number; day: number } {
