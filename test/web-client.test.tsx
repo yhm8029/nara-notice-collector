@@ -24,6 +24,8 @@ describe("web client", () => {
     expect(html).toContain("마감일 빠른순");
     expect(html).toContain("선택");
     expect(html).toContain("상세");
+    expect(html).toContain("검토 메모");
+    expect(html).toContain("태그");
     expect(html).toContain("공고문 페이지");
     expect(html).toContain("공고문 보기");
     expect(html).not.toContain("<th>원문링크</th>");

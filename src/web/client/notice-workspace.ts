@@ -56,6 +56,11 @@ export type WorkspaceSummary = {
   domestic: number;
 };
 
+export type NoticeMetadata = {
+  memo: string;
+  tags: string[];
+};
+
 export const searchPresets: readonly { id: SearchPresetId; label: string }[] = [
   { id: "recent7Days", label: "최근 7일" },
   { id: "thisMonth", label: "이번 달" },
@@ -87,6 +92,52 @@ export function filterRowsByReviewStatus(
 
 export function getReviewStatusLabel(status: ReviewStatus): string {
   return reviewStatuses.find((item) => item.value === status)?.label ?? "미검토";
+}
+
+export function parseTagInput(value: string): string[] {
+  const seen = new Set<string>();
+  for (const tag of value.split(/[,\s/]+/).map((item) => item.trim()).filter(Boolean)) {
+    seen.add(tag);
+  }
+  return [...seen];
+}
+
+export function serializeNoticeMetadata(metadata: ReadonlyMap<string, NoticeMetadata>): string {
+  return JSON.stringify([...metadata.entries()]);
+}
+
+export function deserializeNoticeMetadata(value: string | undefined | null): Map<string, NoticeMetadata> {
+  if (!value) {
+    return new Map();
+  }
+
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!Array.isArray(parsed)) {
+      return new Map();
+    }
+
+    const entries = parsed.flatMap((entry): [string, NoticeMetadata][] => {
+      if (!Array.isArray(entry) || typeof entry[0] !== "string" || typeof entry[1] !== "object" || entry[1] === null) {
+        return [];
+      }
+
+      const metadata = entry[1] as Partial<NoticeMetadata>;
+      return [
+        [
+          entry[0],
+          {
+            memo: typeof metadata.memo === "string" ? metadata.memo : "",
+            tags: Array.isArray(metadata.tags) ? metadata.tags.filter((tag): tag is string => typeof tag === "string") : []
+          }
+        ]
+      ];
+    });
+
+    return new Map(entries);
+  } catch {
+    return new Map();
+  }
 }
 
 export function resolveSearchPreset(id: SearchPresetId, baseDate = new Date()): {
