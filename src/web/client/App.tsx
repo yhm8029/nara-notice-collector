@@ -2,6 +2,7 @@ import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Sea
 import { useEffect, useMemo, useState } from "react";
 import {
   buildStatus,
+  buildDeadlineBadge,
   deserializeNoticeMetadata,
   filterRowsByReviewStatus,
   filterAndSortRows,
@@ -359,6 +360,7 @@ export function App() {
               <tr>
                 <th>선택</th>
                 <th>검토 상태</th>
+                <th>마감 상태</th>
                 {columns.map((column) => (
                   <th key={column}>{tableColumnLabels[column]}</th>
                 ))}
@@ -369,13 +371,14 @@ export function App() {
             <tbody>
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td className="empty" colSpan={columns.length + 4}>
+                  <td className="empty" colSpan={columns.length + 5}>
                     표시할 공고가 없습니다.
                   </td>
                 </tr>
               ) : (
                 visibleRows.map((row) => {
                   const notice = notices.find((notice) => notice.noticeId === row["공고번호"]);
+                  const deadlineBadge = buildDeadlineBadge(notice?.deadline ?? row["마감일"]);
                   return (
                     <tr key={row["공고번호"]} className={activeNoticeId === row["공고번호"] ? "active-row" : undefined}>
                       <td>
@@ -398,6 +401,9 @@ export function App() {
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td>
+                        <span className={`deadline-badge ${deadlineBadge.tone}`}>{deadlineBadge.label}</span>
                       </td>
                       {columns.map((column) => (
                         <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
@@ -455,7 +461,12 @@ export function App() {
                 </div>
                 <div>
                   <dt>마감일</dt>
-                  <dd>{activeNotice.deadline ?? "-"}</dd>
+                  <dd>
+                    {activeNotice.deadline ?? "-"}{" "}
+                    <span className={`deadline-badge ${buildDeadlineBadge(activeNotice.deadline).tone}`}>
+                      {buildDeadlineBadge(activeNotice.deadline).label}
+                    </span>
+                  </dd>
                 </div>
                 <div>
                   <dt>예산</dt>

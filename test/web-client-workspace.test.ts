@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStatus,
+  buildDeadlineBadge,
   deserializeNoticeMetadata,
   filterRowsByReviewStatus,
   filterAndSortRows,
@@ -125,6 +126,15 @@ describe("web workspace helpers", () => {
       tags: ["시설", "긴급"]
     });
     expect(deserializeNoticeMetadata("not json")).toEqual(new Map());
+  });
+
+  it("builds deadline D-day badges", () => {
+    const baseDate = new Date("2026-06-02T00:00:00+09:00");
+
+    expect(buildDeadlineBadge("2026-06-05", baseDate)).toEqual({ label: "D-3", tone: "normal" });
+    expect(buildDeadlineBadge("2026-06-02", baseDate)).toEqual({ label: "오늘 마감", tone: "urgent" });
+    expect(buildDeadlineBadge("2026-06-01", baseDate)).toEqual({ label: "마감 지남", tone: "muted" });
+    expect(buildDeadlineBadge(undefined, baseDate)).toEqual({ label: "마감일 없음", tone: "muted" });
   });
 });
 

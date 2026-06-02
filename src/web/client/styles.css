@@ -298,6 +298,31 @@ td.wide {
   font-size: 12px;
 }
 
+.deadline-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid #b8c7df;
+  border-radius: 999px;
+  padding: 0 8px;
+  color: #183f75;
+  background: #f1f6ff;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.deadline-badge.urgent {
+  border-color: #f0b8b8;
+  color: #8a1f1f;
+  background: #fff3f3;
+}
+
+.deadline-badge.muted {
+  border-color: #d7dce5;
+  color: #7a828f;
+  background: #f6f7f9;
+}
+
 .detail-panel dt {
   color: #5f6673;
   font-size: 12px;
