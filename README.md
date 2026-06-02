@@ -234,6 +234,20 @@ git push origin v0.4.0
 
 릴리즈 워크플로는 테스트와 웹 빌드를 다시 실행하고, `npm pack` 결과물을 GitHub Release 첨부 파일로 올립니다.
 
+GitHub generated release notes는 `.github/release.yml` 설정을 사용해 PR 라벨별로 변경사항을 묶습니다.
+
+권장 라벨은 다음과 같습니다.
+
+| 라벨 | 릴리즈 노트 섹션 |
+| --- | --- |
+| `feature`, `enhancement` | Features |
+| `bug`, `fix` | Fixes |
+| `documentation`, `docs` | Documentation |
+| `test`, `tests` | Tests |
+| `ci`, `release` | CI And Release |
+| `dependencies` | Dependencies |
+| `ignore-for-release` | 릴리즈 노트 제외 |
+
 ---
 
 ## 공사·물품·용역·내자 분류 기준
