@@ -1,12 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStatus,
+  deserializeNoticeMetadata,
   filterRowsByReviewStatus,
   filterAndSortRows,
   getExportNotices,
   getInitialReviewState,
+  parseTagInput,
   reviewStatuses,
   resolveSearchPreset,
+  serializeNoticeMetadata,
   summarizeRows,
   type NormalizedNotice,
   type NoticeRow
@@ -100,6 +103,28 @@ describe("web workspace helpers", () => {
       "20260500002"
     ]);
     expect(filterRowsByReviewStatus(rows, reviewState, "all")).toHaveLength(3);
+  });
+
+  it("parses tag input and serializes notice metadata", () => {
+    expect(parseTagInput("전기, 시설 / 긴급  전기")).toEqual(["전기", "시설", "긴급"]);
+
+    const serialized = serializeNoticeMetadata(
+      new Map([
+        [
+          "20260500001",
+          {
+            memo: "현장 설명 확인 필요",
+            tags: ["시설", "긴급"]
+          }
+        ]
+      ])
+    );
+
+    expect(deserializeNoticeMetadata(serialized).get("20260500001")).toEqual({
+      memo: "현장 설명 확인 필요",
+      tags: ["시설", "긴급"]
+    });
+    expect(deserializeNoticeMetadata("not json")).toEqual(new Map());
   });
 });
 

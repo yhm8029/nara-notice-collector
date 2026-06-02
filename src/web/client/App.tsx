@@ -1,17 +1,21 @@
 import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   buildStatus,
+  deserializeNoticeMetadata,
   filterRowsByReviewStatus,
   filterAndSortRows,
   getExportNotices,
   getInitialReviewState,
   getReviewStatusLabel,
+  parseTagInput,
   resolveSearchPreset,
   reviewStatuses,
+  serializeNoticeMetadata,
   searchPresets,
   summarizeRows,
   type NormalizedNotice,
+  type NoticeMetadata,
   type NoticeRow,
   type ReviewStatus,
   type ReviewStatusFilter,
@@ -19,6 +23,8 @@ import {
   type SortMode,
   type WorkspaceStatus
 } from "./notice-workspace.js";
+
+const noticeMetadataStorageKey = "nara-notice-collector.noticeMetadata";
 
 type NoticePayload = {
   rows: NoticeRow[];
@@ -73,6 +79,9 @@ export function App() {
   const [selectedNoticeIds, setSelectedNoticeIds] = useState<Set<string>>(new Set());
   const [activeNoticeId, setActiveNoticeId] = useState<string | undefined>();
   const [reviewState, setReviewState] = useState<Map<string, ReviewStatus>>(new Map());
+  const [noticeMetadata, setNoticeMetadata] = useState<Map<string, NoticeMetadata>>(() =>
+    deserializeNoticeMetadata(typeof window === "undefined" ? undefined : window.localStorage.getItem(noticeMetadataStorageKey))
+  );
 
   const visibleRows = useMemo(
     () => filterRowsByReviewStatus(filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }), reviewState, reviewStatusFilter),
@@ -80,7 +89,12 @@ export function App() {
   );
   const summary = useMemo(() => summarizeRows(visibleRows), [visibleRows]);
   const activeNotice = notices.find((notice) => notice.noticeId === activeNoticeId) ?? notices[0];
+  const activeNoticeMetadata = activeNotice ? noticeMetadata.get(activeNotice.noticeId) ?? { memo: "", tags: [] } : { memo: "", tags: [] };
   const selectedExportCount = selectedNoticeIds.size === 0 ? notices.length : selectedNoticeIds.size;
+
+  useEffect(() => {
+    window.localStorage.setItem(noticeMetadataStorageKey, serializeNoticeMetadata(noticeMetadata));
+  }, [noticeMetadata]);
 
   async function loadSample() {
     setLoading("sample");
@@ -196,6 +210,24 @@ export function App() {
     setReviewState((current) => {
       const next = new Map(current);
       next.set(noticeId, status);
+      return next;
+    });
+  }
+
+  function updateNoticeMemo(noticeId: string, memo: string) {
+    setNoticeMetadata((current) => {
+      const next = new Map(current);
+      const previous = next.get(noticeId) ?? { memo: "", tags: [] };
+      next.set(noticeId, { ...previous, memo });
+      return next;
+    });
+  }
+
+  function updateNoticeTags(noticeId: string, tagInput: string) {
+    setNoticeMetadata((current) => {
+      const next = new Map(current);
+      const previous = next.get(noticeId) ?? { memo: "", tags: [] };
+      next.set(noticeId, { ...previous, tags: parseTagInput(tagInput) });
       return next;
     });
   }
@@ -434,6 +466,31 @@ export function App() {
           ) : (
             <p>공고를 선택하면 상세 정보가 표시됩니다.</p>
           )}
+          <div className="review-fields">
+            <label>
+              검토 메모
+              <textarea
+                value={activeNoticeMetadata.memo}
+                onChange={(event) => activeNotice && updateNoticeMemo(activeNotice.noticeId, event.target.value)}
+                disabled={!activeNotice}
+                rows={4}
+              />
+            </label>
+            <label>
+              태그
+              <input
+                value={activeNoticeMetadata.tags.join(", ")}
+                onChange={(event) => activeNotice && updateNoticeTags(activeNotice.noticeId, event.target.value)}
+                disabled={!activeNotice}
+                placeholder="시설, 긴급"
+              />
+            </label>
+            <div className="tag-list">
+              {activeNoticeMetadata.tags.map((tag) => (
+                <span key={tag}>{tag}</span>
+              ))}
+            </div>
+          </div>
         </aside>
       </section>
     </main>
