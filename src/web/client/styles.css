@@ -205,6 +205,25 @@ input[type="checkbox"] {
   color: #303642;
 }
 
+.inline-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+}
+
+.favorite-button {
+  min-height: 30px;
+  width: 34px;
+  padding: 0;
+}
+
+.favorite-button.active {
+  border-color: #d6a500;
+  color: #7a5600;
+  background: #fff6ce;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 280px;

@@ -95,6 +95,18 @@ export function filterRowsByReviewStatus(
   return rows.filter((row) => (reviewState.get(row["공고번호"]) ?? "unreviewed") === filter);
 }
 
+export function filterRowsByFavorites(
+  rows: readonly NoticeRow[],
+  favoriteNoticeIds: ReadonlySet<string>,
+  favoritesOnly: boolean
+): NoticeRow[] {
+  if (!favoritesOnly) {
+    return [...rows];
+  }
+
+  return rows.filter((row) => favoriteNoticeIds.has(row["공고번호"]));
+}
+
 export function getReviewStatusLabel(status: ReviewStatus): string {
   return reviewStatuses.find((item) => item.value === status)?.label ?? "미검토";
 }
@@ -223,9 +235,14 @@ export function summarizeRows(rows: readonly NoticeRow[]): WorkspaceSummary {
   };
 }
 
-export function getExportNotices(notices: readonly NormalizedNotice[], selectedNoticeIds: ReadonlySet<string>): NormalizedNotice[] {
+export function getExportNotices(
+  notices: readonly NormalizedNotice[],
+  selectedNoticeIds: ReadonlySet<string>,
+  favoriteNoticeIds: ReadonlySet<string> = new Set(),
+  favoritesOnly = false
+): NormalizedNotice[] {
   if (selectedNoticeIds.size === 0) {
-    return [...notices];
+    return favoritesOnly ? notices.filter((notice) => favoriteNoticeIds.has(notice.noticeId)) : [...notices];
   }
 
   return notices.filter((notice) => selectedNoticeIds.has(notice.noticeId));

@@ -23,6 +23,8 @@ describe("web client", () => {
     expect(html).toContain("제외");
     expect(html).toContain("마감일 빠른순");
     expect(html).toContain("마감 상태");
+    expect(html).toContain("관심 공고만");
+    expect(html).toContain("관심");
     expect(html).toContain("선택");
     expect(html).toContain("상세");
     expect(html).toContain("검토 메모");

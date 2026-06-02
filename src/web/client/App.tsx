@@ -1,9 +1,10 @@
-import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
+import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Search, Star, TableProperties } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import {
   buildStatus,
   buildDeadlineBadge,
   deserializeNoticeMetadata,
+  filterRowsByFavorites,
   filterRowsByReviewStatus,
   filterAndSortRows,
   getExportNotices,
@@ -78,6 +79,8 @@ export function App() {
   const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("noticeId");
   const [selectedNoticeIds, setSelectedNoticeIds] = useState<Set<string>>(new Set());
+  const [favoriteNoticeIds, setFavoriteNoticeIds] = useState<Set<string>>(new Set());
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [activeNoticeId, setActiveNoticeId] = useState<string | undefined>();
   const [reviewState, setReviewState] = useState<Map<string, ReviewStatus>>(new Map());
   const [noticeMetadata, setNoticeMetadata] = useState<Map<string, NoticeMetadata>>(() =>
@@ -85,13 +88,18 @@ export function App() {
   );
 
   const visibleRows = useMemo(
-    () => filterRowsByReviewStatus(filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }), reviewState, reviewStatusFilter),
-    [noticeTypeFilter, notices, reviewState, reviewStatusFilter, rows, sortMode]
+    () =>
+      filterRowsByFavorites(
+        filterRowsByReviewStatus(filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }), reviewState, reviewStatusFilter),
+        favoriteNoticeIds,
+        favoritesOnly
+      ),
+    [favoriteNoticeIds, favoritesOnly, noticeTypeFilter, notices, reviewState, reviewStatusFilter, rows, sortMode]
   );
   const summary = useMemo(() => summarizeRows(visibleRows), [visibleRows]);
   const activeNotice = notices.find((notice) => notice.noticeId === activeNoticeId) ?? notices[0];
   const activeNoticeMetadata = activeNotice ? noticeMetadata.get(activeNotice.noticeId) ?? { memo: "", tags: [] } : { memo: "", tags: [] };
-  const selectedExportCount = selectedNoticeIds.size === 0 ? notices.length : selectedNoticeIds.size;
+  const selectedExportCount = getExportNotices(notices, selectedNoticeIds, favoriteNoticeIds, favoritesOnly).length;
 
   useEffect(() => {
     window.localStorage.setItem(noticeMetadataStorageKey, serializeNoticeMetadata(noticeMetadata));
@@ -135,7 +143,7 @@ export function App() {
       return;
     }
 
-    const exportNotices = getExportNotices(notices, selectedNoticeIds);
+    const exportNotices = getExportNotices(notices, selectedNoticeIds, favoriteNoticeIds, favoritesOnly);
     setLoading(format);
     setStatus(undefined);
     try {
@@ -184,6 +192,7 @@ export function App() {
     setRows(payload.rows);
     setNotices(payload.notices);
     setSelectedNoticeIds(new Set());
+    setFavoriteNoticeIds(new Set());
     setActiveNoticeId(payload.notices[0]?.noticeId);
     setReviewState(getInitialReviewState(payload.rows));
   }
@@ -197,6 +206,18 @@ export function App() {
 
   function toggleNoticeSelection(noticeId: string) {
     setSelectedNoticeIds((current) => {
+      const next = new Set(current);
+      if (next.has(noticeId)) {
+        next.delete(noticeId);
+      } else {
+        next.add(noticeId);
+      }
+      return next;
+    });
+  }
+
+  function toggleFavoriteNotice(noticeId: string) {
+    setFavoriteNoticeIds((current) => {
       const next = new Set(current);
       if (next.has(noticeId)) {
         next.delete(noticeId);
@@ -322,9 +343,13 @@ export function App() {
             <option value="budgetDesc">예산 높은순</option>
           </select>
         </label>
+        <label className="inline-check">
+          <input checked={favoritesOnly} onChange={(event) => setFavoritesOnly(event.target.checked)} type="checkbox" />
+          관심 공고만
+        </label>
         <div className="selection-status">
           <CheckSquare size={17} />
-          선택 {selectedNoticeIds.size}건 / 내보내기 {selectedExportCount}건
+          선택 {selectedNoticeIds.size}건 / 관심 {favoriteNoticeIds.size}건 / 내보내기 {selectedExportCount}건
         </div>
       </section>
 
@@ -359,6 +384,7 @@ export function App() {
             <thead>
               <tr>
                 <th>선택</th>
+                <th>관심</th>
                 <th>검토 상태</th>
                 <th>마감 상태</th>
                 {columns.map((column) => (
@@ -371,7 +397,7 @@ export function App() {
             <tbody>
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td className="empty" colSpan={columns.length + 5}>
+                  <td className="empty" colSpan={columns.length + 6}>
                     표시할 공고가 없습니다.
                   </td>
                 </tr>
@@ -388,6 +414,16 @@ export function App() {
                           onChange={() => toggleNoticeSelection(row["공고번호"])}
                           type="checkbox"
                         />
+                      </td>
+                      <td>
+                        <button
+                          className={`favorite-button ${favoriteNoticeIds.has(row["공고번호"]) ? "active" : ""}`}
+                          type="button"
+                          onClick={() => toggleFavoriteNotice(row["공고번호"])}
+                          aria-label={`${row["공고명"]} 관심`}
+                        >
+                          <Star size={16} />
+                        </button>
                       </td>
                       <td>
                         <select
@@ -447,6 +483,10 @@ export function App() {
             <>
               <strong>{activeNotice.title}</strong>
               <dl>
+                <div>
+                  <dt>관심</dt>
+                  <dd>{favoriteNoticeIds.has(activeNotice.noticeId) ? "관심 공고" : "일반 공고"}</dd>
+                </div>
                 <div>
                   <dt>검토 상태</dt>
                   <dd>{getReviewStatusLabel(reviewState.get(activeNotice.noticeId) ?? "unreviewed")}</dd>
