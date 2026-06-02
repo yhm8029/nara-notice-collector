@@ -10,6 +10,7 @@
 - Deadline D-day badges for upcoming, same-day, overdue, and missing deadlines
 - Favorite notice toggles with favorites-only filtering and favorite-based export behavior
 - Pull request and issue templates for feature requests, bug reports, verification, and release impact
+- Generated release notes template with label-based changelog sections
 - Release workflow that validates tagged releases, builds the web UI, packages the npm tarball, and publishes a GitHub release
 - Local web UI notice document button with configurable Synap viewer URL template
 - API business-division based notice type classification using Nara bid notice endpoints
