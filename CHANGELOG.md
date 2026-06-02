@@ -5,6 +5,7 @@
 ### Added
 
 - Local web workspace controls for search presets, notice type filtering, sorting, selected export, and notice detail review
+- Notice review statuses for 미검토, 검토중, 관심, and 제외
 - Release workflow that validates tagged releases, builds the web UI, packages the npm tarball, and publishes a GitHub release
 - Local web UI notice document button with configurable Synap viewer URL template
 - API business-division based notice type classification using Nara bid notice endpoints

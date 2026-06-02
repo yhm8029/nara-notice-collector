@@ -2,13 +2,19 @@ import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Sea
 import { useMemo, useState } from "react";
 import {
   buildStatus,
+  filterRowsByReviewStatus,
   filterAndSortRows,
   getExportNotices,
+  getInitialReviewState,
+  getReviewStatusLabel,
   resolveSearchPreset,
+  reviewStatuses,
   searchPresets,
   summarizeRows,
   type NormalizedNotice,
   type NoticeRow,
+  type ReviewStatus,
+  type ReviewStatusFilter,
   type NoticeTypeFilter,
   type SortMode,
   type WorkspaceStatus
@@ -62,13 +68,15 @@ export function App() {
   const [status, setStatus] = useState<WorkspaceStatus | undefined>();
   const [loading, setLoading] = useState("");
   const [noticeTypeFilter, setNoticeTypeFilter] = useState<NoticeTypeFilter>("all");
+  const [reviewStatusFilter, setReviewStatusFilter] = useState<ReviewStatusFilter>("all");
   const [sortMode, setSortMode] = useState<SortMode>("noticeId");
   const [selectedNoticeIds, setSelectedNoticeIds] = useState<Set<string>>(new Set());
   const [activeNoticeId, setActiveNoticeId] = useState<string | undefined>();
+  const [reviewState, setReviewState] = useState<Map<string, ReviewStatus>>(new Map());
 
   const visibleRows = useMemo(
-    () => filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }),
-    [noticeTypeFilter, notices, rows, sortMode]
+    () => filterRowsByReviewStatus(filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }), reviewState, reviewStatusFilter),
+    [noticeTypeFilter, notices, reviewState, reviewStatusFilter, rows, sortMode]
   );
   const summary = useMemo(() => summarizeRows(visibleRows), [visibleRows]);
   const activeNotice = notices.find((notice) => notice.noticeId === activeNoticeId) ?? notices[0];
@@ -162,6 +170,7 @@ export function App() {
     setNotices(payload.notices);
     setSelectedNoticeIds(new Set());
     setActiveNoticeId(payload.notices[0]?.noticeId);
+    setReviewState(getInitialReviewState(payload.rows));
   }
 
   function applyPreset(id: Parameters<typeof resolveSearchPreset>[0]) {
@@ -179,6 +188,14 @@ export function App() {
       } else {
         next.add(noticeId);
       }
+      return next;
+    });
+  }
+
+  function updateReviewStatus(noticeId: string, status: ReviewStatus) {
+    setReviewState((current) => {
+      const next = new Map(current);
+      next.set(noticeId, status);
       return next;
     });
   }
@@ -254,6 +271,17 @@ export function App() {
           </select>
         </label>
         <label>
+          검토 상태
+          <select value={reviewStatusFilter} onChange={(event) => setReviewStatusFilter(event.target.value as ReviewStatusFilter)}>
+            <option value="all">전체 상태</option>
+            {reviewStatuses.map((status) => (
+              <option key={status.value} value={status.value}>
+                {status.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           정렬
           <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
             <option value="noticeId">공고번호순</option>
@@ -298,6 +326,7 @@ export function App() {
             <thead>
               <tr>
                 <th>선택</th>
+                <th>검토 상태</th>
                 {columns.map((column) => (
                   <th key={column}>{tableColumnLabels[column]}</th>
                 ))}
@@ -308,7 +337,7 @@ export function App() {
             <tbody>
               {visibleRows.length === 0 ? (
                 <tr>
-                  <td className="empty" colSpan={columns.length + 3}>
+                  <td className="empty" colSpan={columns.length + 4}>
                     표시할 공고가 없습니다.
                   </td>
                 </tr>
@@ -324,6 +353,19 @@ export function App() {
                           onChange={() => toggleNoticeSelection(row["공고번호"])}
                           type="checkbox"
                         />
+                      </td>
+                      <td>
+                        <select
+                          aria-label={`${row["공고명"]} 검토 상태`}
+                          value={reviewState.get(row["공고번호"]) ?? "unreviewed"}
+                          onChange={(event) => updateReviewStatus(row["공고번호"], event.target.value as ReviewStatus)}
+                        >
+                          {reviewStatuses.map((status) => (
+                            <option key={status.value} value={status.value}>
+                              {status.label}
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       {columns.map((column) => (
                         <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
@@ -367,6 +409,10 @@ export function App() {
             <>
               <strong>{activeNotice.title}</strong>
               <dl>
+                <div>
+                  <dt>검토 상태</dt>
+                  <dd>{getReviewStatusLabel(reviewState.get(activeNotice.noticeId) ?? "unreviewed")}</dd>
+                </div>
                 <div>
                   <dt>공고번호</dt>
                   <dd>{activeNotice.noticeId}</dd>
