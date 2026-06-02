@@ -16,6 +16,11 @@ describe("web client", () => {
     expect(html).toContain("이번 달");
     expect(html).toContain("행정복지센터");
     expect(html).toContain("전체 유형");
+    expect(html).toContain("검토 상태");
+    expect(html).toContain("미검토");
+    expect(html).toContain("검토중");
+    expect(html).toContain("관심");
+    expect(html).toContain("제외");
     expect(html).toContain("마감일 빠른순");
     expect(html).toContain("선택");
     expect(html).toContain("상세");

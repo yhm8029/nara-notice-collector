@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   buildStatus,
+  filterRowsByReviewStatus,
   filterAndSortRows,
   getExportNotices,
+  getInitialReviewState,
+  reviewStatuses,
   resolveSearchPreset,
   summarizeRows,
   type NormalizedNotice,
@@ -81,6 +84,22 @@ describe("web workspace helpers", () => {
     expect(buildStatus("missing-api-key").message).toContain("API 키");
     expect(buildStatus("empty-result").message).toContain("수집 결과");
     expect(buildStatus("missing-document").message).toContain("공고문 첨부");
+  });
+
+  it("builds review status state and filters rows by status", () => {
+    expect(reviewStatuses.map((status) => status.label)).toEqual(["미검토", "검토중", "관심", "제외"]);
+    expect(getInitialReviewState(rows).get("20260500001")).toBe("unreviewed");
+
+    const reviewState = new Map([
+      ["20260500001", "reviewing"],
+      ["20260500002", "interested"],
+      ["20260500003", "excluded"]
+    ] as const);
+
+    expect(filterRowsByReviewStatus(rows, reviewState, "interested").map((item) => item["공고번호"])).toEqual([
+      "20260500002"
+    ]);
+    expect(filterRowsByReviewStatus(rows, reviewState, "all")).toHaveLength(3);
   });
 });
 

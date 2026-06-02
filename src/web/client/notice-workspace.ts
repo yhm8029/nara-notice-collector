@@ -27,6 +27,8 @@ export type NormalizedNotice = {
 export type NoticeTypeFilter = "all" | NormalizedNotice["noticeType"];
 export type SortMode = "noticeId" | "deadlineAsc" | "budgetDesc";
 export type SearchPresetId = "recent7Days" | "thisMonth" | "welfareCenter";
+export type ReviewStatus = "unreviewed" | "reviewing" | "interested" | "excluded";
+export type ReviewStatusFilter = "all" | ReviewStatus;
 export type StatusKind = "info" | "warning" | "error";
 export type StatusReason =
   | "sample-loaded"
@@ -59,6 +61,33 @@ export const searchPresets: readonly { id: SearchPresetId; label: string }[] = [
   { id: "thisMonth", label: "이번 달" },
   { id: "welfareCenter", label: "행정복지센터" }
 ];
+
+export const reviewStatuses: readonly { value: ReviewStatus; label: string }[] = [
+  { value: "unreviewed", label: "미검토" },
+  { value: "reviewing", label: "검토중" },
+  { value: "interested", label: "관심" },
+  { value: "excluded", label: "제외" }
+];
+
+export function getInitialReviewState(rows: readonly NoticeRow[]): Map<string, ReviewStatus> {
+  return new Map(rows.map((row) => [row["공고번호"], "unreviewed"]));
+}
+
+export function filterRowsByReviewStatus(
+  rows: readonly NoticeRow[],
+  reviewState: ReadonlyMap<string, ReviewStatus>,
+  filter: ReviewStatusFilter
+): NoticeRow[] {
+  if (filter === "all") {
+    return [...rows];
+  }
+
+  return rows.filter((row) => (reviewState.get(row["공고번호"]) ?? "unreviewed") === filter);
+}
+
+export function getReviewStatusLabel(status: ReviewStatus): string {
+  return reviewStatuses.find((item) => item.value === status)?.label ?? "미검토";
+}
 
 export function resolveSearchPreset(id: SearchPresetId, baseDate = new Date()): {
   from: string;
