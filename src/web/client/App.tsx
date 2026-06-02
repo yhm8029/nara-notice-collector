@@ -1,31 +1,18 @@
-import { Download, ExternalLink, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
+import { CheckSquare, Download, ExternalLink, Eye, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
 import { useMemo, useState } from "react";
-
-type NoticeRow = {
-  "No.": number;
-  "공고번호": string;
-  "공고명": string;
-  "구분": string;
-  "기관명": string;
-  "예산": string;
-  "마감일": string;
-  "업종제한": string;
-  "원문링크": string;
-};
-
-type NormalizedNotice = {
-  noticeId: string;
-  title: string;
-  noticeType: "construction" | "goods" | "service" | "domestic";
-  agency: string;
-  region?: string;
-  budget?: number;
-  deadline?: string;
-  industryRestriction?: string;
-  sourceUrl?: string;
-  documentUrl?: string;
-  raw?: Record<string, unknown>;
-};
+import {
+  buildStatus,
+  filterAndSortRows,
+  getExportNotices,
+  resolveSearchPreset,
+  searchPresets,
+  summarizeRows,
+  type NormalizedNotice,
+  type NoticeRow,
+  type NoticeTypeFilter,
+  type SortMode,
+  type WorkspaceStatus
+} from "./notice-workspace.js";
 
 type NoticePayload = {
   rows: NoticeRow[];
@@ -52,6 +39,19 @@ const columns: (keyof NoticeRow)[] = [
 
 const tableColumns = [...columns, "공고문"] as const;
 
+const tableColumnLabels: Record<(typeof tableColumns)[number], string> = {
+  "No.": "No.",
+  공고번호: "공고번호",
+  공고명: "공고명",
+  구분: "구분",
+  기관명: "기관명",
+  예산: "예산",
+  마감일: "마감일",
+  업종제한: "업종제한",
+  원문링크: "공고문 페이지",
+  공고문: "공고문 보기"
+};
+
 export function App() {
   const [rows, setRows] = useState<NoticeRow[]>([]);
   const [notices, setNotices] = useState<NormalizedNotice[]>([]);
@@ -59,24 +59,30 @@ export function App() {
   const [to, setTo] = useState("2026-05-31");
   const [keyword, setKeyword] = useState("행정복지센터");
   const [apiKey, setApiKey] = useState("");
-  const [error, setError] = useState("");
+  const [status, setStatus] = useState<WorkspaceStatus | undefined>();
   const [loading, setLoading] = useState("");
+  const [noticeTypeFilter, setNoticeTypeFilter] = useState<NoticeTypeFilter>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("noticeId");
+  const [selectedNoticeIds, setSelectedNoticeIds] = useState<Set<string>>(new Set());
+  const [activeNoticeId, setActiveNoticeId] = useState<string | undefined>();
 
-  const summary = useMemo(() => {
-    const construction = rows.filter((row) => row["구분"] === "공사").length;
-    const goods = rows.filter((row) => row["구분"] === "물품").length;
-    const service = rows.filter((row) => row["구분"] === "용역").length;
-    const domestic = rows.filter((row) => row["구분"] === "내자").length;
-    return { total: rows.length, construction, goods, service, domestic };
-  }, [rows]);
+  const visibleRows = useMemo(
+    () => filterAndSortRows(rows, notices, { type: noticeTypeFilter, sort: sortMode }),
+    [noticeTypeFilter, notices, rows, sortMode]
+  );
+  const summary = useMemo(() => summarizeRows(visibleRows), [visibleRows]);
+  const activeNotice = notices.find((notice) => notice.noticeId === activeNoticeId) ?? notices[0];
+  const selectedExportCount = selectedNoticeIds.size === 0 ? notices.length : selectedNoticeIds.size;
 
   async function loadSample() {
     setLoading("sample");
-    setError("");
+    setStatus(undefined);
     try {
-      applyPayload(await fetchJson<NoticePayload>("/api/sample-notices"));
+      const payload = await fetchJson<NoticePayload>("/api/sample-notices");
+      applyPayload(payload);
+      setStatus(buildStatus("sample-loaded", payload.rows.length));
     } catch (error) {
-      setError(toErrorMessage(error));
+      setStatus({ kind: "error", message: toErrorMessage(error) });
     } finally {
       setLoading("");
     }
@@ -84,7 +90,7 @@ export function App() {
 
   async function collectNotices() {
     setLoading("collect");
-    setError("");
+    setStatus(undefined);
     try {
       const payload = await fetchJson<NoticePayload>("/api/collect", {
         method: "POST",
@@ -92,11 +98,9 @@ export function App() {
         body: JSON.stringify({ from, to, keyword, apiKey })
       });
       applyPayload(payload);
-      if (payload.rows.length === 0) {
-        setError("수집 결과가 없습니다. 조회 기간, 키워드, API 활용 승인 상태를 확인하세요.");
-      }
+      setStatus(payload.rows.length === 0 ? buildStatus("empty-result") : buildStatus("collect-loaded", payload.rows.length));
     } catch (error) {
-      setError(toErrorMessage(error));
+      setStatus({ kind: "error", message: toErrorMessage(error) });
     } finally {
       setLoading("");
     }
@@ -104,17 +108,18 @@ export function App() {
 
   async function download(format: "csv" | "xlsx") {
     if (notices.length === 0) {
-      setError("먼저 샘플 데이터 또는 API 수집 결과를 불러오세요.");
+      setStatus(buildStatus("export-empty"));
       return;
     }
 
+    const exportNotices = getExportNotices(notices, selectedNoticeIds);
     setLoading(format);
-    setError("");
+    setStatus(undefined);
     try {
       const response = await fetch(`/api/export?format=${format}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ notices })
+        body: JSON.stringify({ notices: exportNotices })
       });
       if (!response.ok) {
         throw new Error(await readError(response));
@@ -127,7 +132,7 @@ export function App() {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setError(toErrorMessage(error));
+      setStatus({ kind: "error", message: toErrorMessage(error) });
     } finally {
       setLoading("");
     }
@@ -137,31 +142,52 @@ export function App() {
     const notice = notices.find((notice) => notice.noticeId === row["공고번호"]);
     const documentUrl = notice?.documentUrl;
     if (!documentUrl) {
-      setError("공고문 첨부 링크가 없는 공고입니다.");
+      setStatus(buildStatus("missing-document"));
       return;
     }
 
-    setError("");
+    setStatus(undefined);
     try {
       const payload = await fetchJson<ViewerUrlPayload>(
         `/api/viewer-url?url=${encodeURIComponent(documentUrl)}&title=${encodeURIComponent(row["공고명"])}`
       );
       window.open(payload.viewerUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
-      setError(toErrorMessage(error));
+      setStatus({ kind: "error", message: toErrorMessage(error) });
     }
   }
 
   function applyPayload(payload: NoticePayload) {
     setRows(payload.rows);
     setNotices(payload.notices);
+    setSelectedNoticeIds(new Set());
+    setActiveNoticeId(payload.notices[0]?.noticeId);
+  }
+
+  function applyPreset(id: Parameters<typeof resolveSearchPreset>[0]) {
+    const preset = resolveSearchPreset(id);
+    setFrom(preset.from);
+    setTo(preset.to);
+    setKeyword(preset.keyword);
+  }
+
+  function toggleNoticeSelection(noticeId: string) {
+    setSelectedNoticeIds((current) => {
+      const next = new Set(current);
+      if (next.has(noticeId)) {
+        next.delete(noticeId);
+      } else {
+        next.add(noticeId);
+      }
+      return next;
+    });
   }
 
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <h1>nara-notice-collector</h1>
+          <h1>나라장터 공고 컬렉터</h1>
           <p>나라장터 공고 검토 테이블</p>
         </div>
         <div className="topbar-actions">
@@ -171,14 +197,22 @@ export function App() {
           </button>
           <button type="button" onClick={() => download("csv")} disabled={loading !== "" || notices.length === 0}>
             <Download size={18} />
-            CSV
+            CSV 내보내기
           </button>
           <button type="button" onClick={() => download("xlsx")} disabled={loading !== "" || notices.length === 0}>
             <FileSpreadsheet size={18} />
-            Excel
+            Excel 내보내기
           </button>
         </div>
       </header>
+
+      <section className="presets" aria-label="검색 조건 프리셋">
+        {searchPresets.map((preset) => (
+          <button key={preset.id} type="button" onClick={() => applyPreset(preset.id)} disabled={loading !== ""}>
+            {preset.label}
+          </button>
+        ))}
+      </section>
 
       <section className="controls" aria-label="API 수집">
         <label>
@@ -208,7 +242,32 @@ export function App() {
         </button>
       </section>
 
-      {error ? <div className="error">{error}</div> : null}
+      <section className="workspace-tools" aria-label="공고 목록 도구">
+        <label>
+          유형
+          <select value={noticeTypeFilter} onChange={(event) => setNoticeTypeFilter(event.target.value as NoticeTypeFilter)}>
+            <option value="all">전체 유형</option>
+            <option value="construction">공사</option>
+            <option value="goods">물품</option>
+            <option value="service">용역</option>
+            <option value="domestic">내자</option>
+          </select>
+        </label>
+        <label>
+          정렬
+          <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)}>
+            <option value="noticeId">공고번호순</option>
+            <option value="deadlineAsc">마감일 빠른순</option>
+            <option value="budgetDesc">예산 높은순</option>
+          </select>
+        </label>
+        <div className="selection-status">
+          <CheckSquare size={17} />
+          선택 {selectedNoticeIds.size}건 / 내보내기 {selectedExportCount}건
+        </div>
+      </section>
+
+      {status ? <div className={`status ${status.kind}`}>{status.message}</div> : null}
 
       <section className="summary" aria-label="요약">
         <div>
@@ -233,53 +292,103 @@ export function App() {
         </div>
       </section>
 
-      <section className="table-wrap" aria-label="공고 목록">
-        <table>
-          <thead>
-            <tr>
-              {tableColumns.map((column) => (
-                <th key={column}>{column}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
+      <section className="workspace-grid">
+        <div className="table-wrap" aria-label="공고 목록">
+          <table>
+            <thead>
               <tr>
-                <td className="empty" colSpan={tableColumns.length}>
-                  표시할 공고가 없습니다.
-                </td>
+                <th>선택</th>
+                {columns.map((column) => (
+                  <th key={column}>{tableColumnLabels[column]}</th>
+                ))}
+                <th>상세</th>
+                <th>{tableColumnLabels["공고문"]}</th>
               </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row["공고번호"]}>
-                  {columns.map((column) => (
-                    <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
-                      {column === "원문링크" && row[column] ? (
-                        <a href={row[column]} target="_blank" rel="noreferrer">
-                          열기
-                        </a>
-                      ) : (
-                        row[column]
-                      )}
-                    </td>
-                  ))}
-                  <td>
-                    <button
-                      className="compact"
-                      type="button"
-                      onClick={() => void openNoticeDocument(row)}
-                      disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl}
-                      title="나라장터 첨부파일을 Synap 공고문 뷰어로 엽니다."
-                    >
-                      <ExternalLink size={16} />
-                      보기
-                    </button>
+            </thead>
+            <tbody>
+              {visibleRows.length === 0 ? (
+                <tr>
+                  <td className="empty" colSpan={columns.length + 3}>
+                    표시할 공고가 없습니다.
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                visibleRows.map((row) => {
+                  const notice = notices.find((notice) => notice.noticeId === row["공고번호"]);
+                  return (
+                    <tr key={row["공고번호"]} className={activeNoticeId === row["공고번호"] ? "active-row" : undefined}>
+                      <td>
+                        <input
+                          aria-label={`${row["공고명"]} 선택`}
+                          checked={selectedNoticeIds.has(row["공고번호"])}
+                          onChange={() => toggleNoticeSelection(row["공고번호"])}
+                          type="checkbox"
+                        />
+                      </td>
+                      {columns.map((column) => (
+                        <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
+                          {column === "원문링크" && row[column] ? (
+                            <a href={row[column]} target="_blank" rel="noreferrer">
+                              열기
+                            </a>
+                          ) : (
+                            row[column]
+                          )}
+                        </td>
+                      ))}
+                      <td>
+                        <button className="compact" type="button" onClick={() => setActiveNoticeId(row["공고번호"])}>
+                          <Eye size={16} />
+                          상세
+                        </button>
+                      </td>
+                      <td>
+                        <button
+                          className="compact"
+                          type="button"
+                          onClick={() => void openNoticeDocument(row)}
+                          disabled={!notice?.documentUrl}
+                          title="나라장터 첨부파일을 Synap 공고문 뷰어로 엽니다."
+                        >
+                          <ExternalLink size={16} />
+                          공고문 보기
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        <aside className="detail-panel" aria-label="공고 상세">
+          <h2>상세</h2>
+          {activeNotice ? (
+            <>
+              <strong>{activeNotice.title}</strong>
+              <dl>
+                <div>
+                  <dt>공고번호</dt>
+                  <dd>{activeNotice.noticeId}</dd>
+                </div>
+                <div>
+                  <dt>기관명</dt>
+                  <dd>{activeNotice.agency}</dd>
+                </div>
+                <div>
+                  <dt>마감일</dt>
+                  <dd>{activeNotice.deadline ?? "-"}</dd>
+                </div>
+                <div>
+                  <dt>예산</dt>
+                  <dd>{activeNotice.budget ? activeNotice.budget.toLocaleString("ko-KR") : "-"}</dd>
+                </div>
+              </dl>
+            </>
+          ) : (
+            <p>공고를 선택하면 상세 정보가 표시됩니다.</p>
+          )}
+        </aside>
       </section>
     </main>
   );

@@ -15,7 +15,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -50,7 +51,8 @@ button:disabled {
   opacity: 0.55;
 }
 
-input {
+input,
+select {
   min-height: 38px;
   width: 100%;
   border: 1px solid #c9d0dc;
@@ -86,21 +88,34 @@ input {
 }
 
 .topbar-actions,
-.controls {
+.controls,
+.presets,
+.workspace-tools {
   display: flex;
   align-items: end;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.controls {
+.controls,
+.workspace-tools {
   padding: 14px;
   border: 1px solid #dde2ea;
   border-radius: 8px;
   background: #ffffff;
 }
 
-.controls label {
+input[type="checkbox"] {
+  min-height: 0;
+  width: auto;
+}
+
+.presets {
+  margin-bottom: 10px;
+}
+
+.controls label,
+.workspace-tools label {
   display: grid;
   gap: 6px;
   min-width: 142px;
@@ -148,6 +163,45 @@ input {
   background: #fff3f3;
 }
 
+.status {
+  margin-top: 12px;
+  border: 1px solid #bfd2ef;
+  border-radius: 8px;
+  padding: 11px 13px;
+  color: #183f75;
+  background: #f1f6ff;
+}
+
+.status.warning {
+  border-color: #efd38c;
+  color: #6d4c00;
+  background: #fff8df;
+}
+
+.status.error {
+  border-color: #f0b8b8;
+  color: #8a1f1f;
+  background: #fff3f3;
+}
+
+.workspace-tools {
+  margin-bottom: 14px;
+}
+
+.selection-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 38px;
+  color: #303642;
+}
+
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 280px;
+  gap: 14px;
+}
+
 .table-wrap {
   overflow: auto;
   border: 1px solid #dde2ea;
@@ -157,7 +211,7 @@ input {
 
 table {
   width: 100%;
-  min-width: 1260px;
+  min-width: 1420px;
   border-collapse: collapse;
   table-layout: fixed;
 }
@@ -183,6 +237,37 @@ th {
 
 td.wide {
   width: 220px;
+}
+
+.active-row {
+  background: #f6faff;
+}
+
+.detail-panel {
+  border: 1px solid #dde2ea;
+  border-radius: 8px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.detail-panel h2 {
+  margin: 0 0 12px;
+  font-size: 16px;
+}
+
+.detail-panel dl {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.detail-panel dt {
+  color: #5f6673;
+  font-size: 12px;
+}
+
+.detail-panel dd {
+  margin: 3px 0 0;
 }
 
 .empty {
@@ -214,18 +299,25 @@ td.wide {
   }
 
   .topbar-actions,
-  .controls {
+  .controls,
+  .presets,
+  .workspace-tools {
     align-items: stretch;
     flex-direction: column;
   }
 
   .controls label,
   .controls .api-key,
-  button {
+  button,
+  select {
     width: 100%;
   }
 
   .summary {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-grid {
     grid-template-columns: 1fr;
   }
 }

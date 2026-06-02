@@ -4,10 +4,15 @@
 
 ### Added
 
+- Local web workspace controls for search presets, notice type filtering, sorting, selected export, and notice detail review
+- Release workflow that validates tagged releases, builds the web UI, packages the npm tarball, and publishes a GitHub release
 - Local web UI notice document button with configurable Synap viewer URL template
 - API business-division based notice type classification using Nara bid notice endpoints
 
 ### Changed
+
+- Renamed the local web UI to `나라장터 공고 컬렉터`
+- Clarified table action labels from source-link wording to `공고문 페이지` and `공고문 보기`
 
 - Removed title keyword based notice type classification
 
