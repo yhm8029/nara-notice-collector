@@ -46,11 +46,12 @@ export class ProcurementCorpStore {
         dtl_adrs,
         rgn_nm,
         corp_bsns_div_nm,
+        industry_detail_summary,
         tel_no,
         fax_no,
         hmpg_adrs,
         updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(bizno) DO UPDATE SET
         corp_nm = excluded.corp_nm,
         ceo_nm = excluded.ceo_nm,
@@ -58,6 +59,7 @@ export class ProcurementCorpStore {
         dtl_adrs = excluded.dtl_adrs,
         rgn_nm = excluded.rgn_nm,
         corp_bsns_div_nm = excluded.corp_bsns_div_nm,
+        industry_detail_summary = excluded.industry_detail_summary,
         tel_no = excluded.tel_no,
         fax_no = excluded.fax_no,
         hmpg_adrs = excluded.hmpg_adrs,
@@ -78,6 +80,7 @@ export class ProcurementCorpStore {
           item.dtlAdrs ?? "",
           item.rgnNm ?? "",
           item.corpBsnsDivNm ?? "",
+          item.industryDetailSummary ?? "",
           item.telNo ?? "",
           item.faxNo ?? "",
           item.hmpgAdrs ?? ""
@@ -127,6 +130,7 @@ export class ProcurementCorpStore {
           dtl_adrs AS dtlAdrs,
           rgn_nm AS rgnNm,
           corp_bsns_div_nm AS corpBsnsDivNm,
+          industry_detail_summary AS industryDetailSummary,
           tel_no AS telNo,
           fax_no AS faxNo,
           hmpg_adrs AS hmpgAdrs
@@ -163,6 +167,7 @@ export class ProcurementCorpStore {
         dtl_adrs TEXT NOT NULL DEFAULT '',
         rgn_nm TEXT NOT NULL DEFAULT '',
         corp_bsns_div_nm TEXT NOT NULL DEFAULT '',
+        industry_detail_summary TEXT NOT NULL DEFAULT '',
         tel_no TEXT NOT NULL DEFAULT '',
         fax_no TEXT NOT NULL DEFAULT '',
         hmpg_adrs TEXT NOT NULL DEFAULT '',
@@ -172,6 +177,20 @@ export class ProcurementCorpStore {
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_rgn_nm ON procurement_corps(rgn_nm);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_updated_at ON procurement_corps(updated_at);
     `);
+    this.addColumnIfMissing("procurement_corps", "industry_detail_summary", "TEXT NOT NULL DEFAULT ''");
+  }
+
+  private addColumnIfMissing(tableName: string, columnName: string, definition: string): void {
+    if (!this.db) {
+      return;
+    }
+
+    const columns = this.db.prepare(`PRAGMA table_info(${tableName})`).all() as { name?: string }[];
+    if (columns.some((column) => column.name === columnName)) {
+      return;
+    }
+
+    this.db.exec(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`);
   }
 }
 

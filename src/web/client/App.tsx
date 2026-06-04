@@ -30,6 +30,7 @@ type ProcurementCorpRow = {
   "상세주소": string;
   "지역명": string;
   "업종/업무구분": string;
+  "업종상세": string;
   "전화번호": string;
   "팩스번호": string;
   "홈페이지주소": string;
@@ -106,6 +107,7 @@ const corpColumns: (keyof ProcurementCorpRow)[] = [
   "상세주소",
   "지역명",
   "업종/업무구분",
+  "업종상세",
   "전화번호",
   "팩스번호",
   "홈페이지주소"

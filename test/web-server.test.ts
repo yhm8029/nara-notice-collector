@@ -35,34 +35,59 @@ describe("local web server API", () => {
   });
 
   it("collects procurement corporation rows from the local API", async () => {
-    const fetchImpl = vi.fn().mockResolvedValueOnce(
-      responseJson({
-        response: {
-          header: { resultCode: "00", resultMsg: "정상" },
-          body: {
-            pageNo: 1,
-            numOfRows: 100,
-            totalCount: 1,
-            items: {
-              item: [
-                {
-                  bizno: "1111111111",
-                  corpNm: "첫번째회사",
-                  ceoNm: "대표일",
-                  adrs: "서울특별시 중구",
-                  dtlAdrs: "1층",
-                  rgnNm: "서울특별시 중구",
-                  corpBsnsDivNm: "물품",
-                  telNo: "02-1111-1111",
-                  faxNo: "02-1111-1112",
-                  hmpgAdrs: "first.example.com"
-                }
-              ]
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bizno: "1111111111",
+                    corpNm: "첫번째회사",
+                    ceoNm: "대표일",
+                    adrs: "서울특별시 중구",
+                    dtlAdrs: "1층",
+                    rgnNm: "서울특별시 중구",
+                    corpBsnsDivNm: "물품",
+                    telNo: "02-1111-1111",
+                    faxNo: "02-1111-1112",
+                    hmpgAdrs: "first.example.com"
+                  }
+                ]
+              }
             }
           }
-        }
-      })
-    );
+        })
+      )
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bizno: "1111111111",
+                    indstrytyCd: "1426",
+                    indstrytyNm: "software business",
+                    indstrytyStatsNm: "normal",
+                    rprsntIndstrytyYn: "N"
+                  }
+                ]
+              }
+            }
+          }
+        })
+      );
     const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
 
     const response = await request(app)
@@ -80,12 +105,15 @@ describe("local web server API", () => {
         "상세주소": "1층",
         "지역명": "서울특별시 중구",
         "업종/업무구분": "물품",
+        "업종상세": "software business(1426, normal)",
         "전화번호": "02-1111-1111",
         "팩스번호": "02-1111-1112",
         "홈페이지주소": "first.example.com"
       }
     ]);
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryDiv=2");
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain("getPrcrmntCorpIndstrytyInfo02");
+    expect(String(fetchImpl.mock.calls[1]?.[0])).toContain("inqryDiv=1");
   });
 
   it("collects procurement corporations without visible date inputs by using the automatic range", async () => {

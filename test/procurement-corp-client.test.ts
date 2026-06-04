@@ -214,11 +214,177 @@ describe("NaraProcurementCorpClient", () => {
         "상세주소": "1층",
         "지역명": "서울특별시 중구",
         "업종/업무구분": "물품",
+        "업종상세": "",
         "전화번호": "02-1111-1111",
         "팩스번호": "02-1111-1112",
         "홈페이지주소": "first.example.com"
       }
     ]);
+  });
+
+  it("collects industry details for a procurement corporation by business number", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        return new Response(
+          JSON.stringify({
+            response: {
+              header: { resultCode: "00", resultMsg: "normal" },
+              body: {
+                pageNo: 1,
+                numOfRows: 10,
+                totalCount: 2,
+                items: {
+                  item: [
+                    {
+                      bizno: "1111111111",
+                      indstrytyCd: "0036",
+                      indstrytyNm: "information communication construction",
+                      rgstDt: "2020-01-01 00:00:00",
+                      vldPrdExprtDt: "",
+                      indstrytyStatsNm: "",
+                      rprsntIndstrytyYn: "Y"
+                    },
+                    {
+                      bizno: "1111111111",
+                      indstrytyCd: "1426",
+                      indstrytyNm: "software business",
+                      rgstDt: "2026-03-05 00:00:00",
+                      vldPrdExprtDt: "2099-12-31 00:00:00",
+                      indstrytyStatsNm: "normal",
+                      rprsntIndstrytyYn: "N"
+                    }
+                  ]
+                }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const industries = await client.collectIndustryDetailsByBusinessNumber("111-11-11111");
+
+    expect(industries).toEqual([
+      {
+        bizno: "1111111111",
+        indstrytyCd: "0036",
+        indstrytyNm: "information communication construction",
+        rgstDt: "2020-01-01 00:00:00",
+        vldPrdExprtDt: "",
+        indstrytyStatsNm: "",
+        rprsntIndstrytyYn: "Y"
+      },
+      {
+        bizno: "1111111111",
+        indstrytyCd: "1426",
+        indstrytyNm: "software business",
+        rgstDt: "2026-03-05 00:00:00",
+        vldPrdExprtDt: "2099-12-31 00:00:00",
+        indstrytyStatsNm: "normal",
+        rprsntIndstrytyYn: "N"
+      }
+    ]);
+    const url = new URL(requestedUrls[0] ?? "");
+    expect(url.origin + url.pathname).toBe(
+      "https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpIndstrytyInfo02"
+    );
+    expect(url.searchParams.get("inqryDiv")).toBe("1");
+    expect(url.searchParams.get("bizno")).toBe("1111111111");
+  });
+
+  it("collects industry details across all reported pages", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        const pageNo = new URL(String(url)).searchParams.get("pageNo");
+        return new Response(
+          JSON.stringify({
+            response: {
+              header: { resultCode: "00", resultMsg: "normal" },
+              body: {
+                pageNo,
+                numOfRows: 1,
+                totalCount: 2,
+                items: {
+                  item: [
+                    pageNo === "1"
+                      ? { bizno: "1111111111", indstrytyCd: "0036", indstrytyNm: "first industry" }
+                      : { bizno: "1111111111", indstrytyCd: "1426", indstrytyNm: "second industry" }
+                  ]
+                }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const industries = await client.collectIndustryDetailsByBusinessNumber("1111111111", { numOfRows: 1 });
+
+    expect(industries.map((industry) => industry.indstrytyNm)).toEqual(["first industry", "second industry"]);
+    expect(requestedUrls.map((url) => new URL(url).searchParams.get("pageNo"))).toEqual(["1", "2"]);
+  });
+
+  it("adds a readable industry detail summary to corporation rows", async () => {
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async () =>
+        new Response(
+          JSON.stringify({
+            response: {
+              header: { resultCode: "00", resultMsg: "normal" },
+              body: {
+                pageNo: 1,
+                numOfRows: 10,
+                totalCount: 2,
+                items: {
+                  item: [
+                    {
+                      bizno: "1111111111",
+                      indstrytyCd: "0036",
+                      indstrytyNm: "information communication construction",
+                      indstrytyStatsNm: "",
+                      rprsntIndstrytyYn: "Y"
+                    },
+                    {
+                      bizno: "1111111111",
+                      indstrytyCd: "1426",
+                      indstrytyNm: "software business",
+                      indstrytyStatsNm: "normal",
+                      rprsntIndstrytyYn: "N"
+                    }
+                  ]
+                }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        )
+    });
+
+    const [corporation] = await client.enrichCorporationsWithIndustryDetails([
+      {
+        bizno: "1111111111",
+        corpNm: "first corporation"
+      }
+    ]);
+
+    expect(corporation?.industryDetailSummary).toBe(
+      "information communication construction(0036, 대표); software business(1426, normal)"
+    );
+    expect(toProcurementCorpRows([corporation ?? {}])[0]?.["업종상세"]).toBe(
+      "information communication construction(0036, 대표); software business(1426, normal)"
+    );
   });
 
   it("builds 10-month collection batches for concurrent workers", () => {

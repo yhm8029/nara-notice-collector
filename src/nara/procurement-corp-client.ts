@@ -1,9 +1,12 @@
 const PROCUREMENT_CORP_ENDPOINT =
   "https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpBasicInfo02";
+const PROCUREMENT_CORP_INDUSTRY_ENDPOINT =
+  "https://apis.data.go.kr/1230000/ao/UsrInfoService02/getPrcrmntCorpIndstrytyInfo02";
 
 export type ProcurementCorpClientConfig = {
   apiKey: string;
   endpoint?: string;
+  industryEndpoint?: string;
   fetch?: typeof fetch;
   requestDelayMs?: number;
   retryDelaysMs?: number[];
@@ -51,8 +54,23 @@ export type RawProcurementCorp = Record<string, unknown> & {
   dtlAdrs?: string;
   faxNo?: string;
   hmpgAdrs?: string;
+  industryDetails?: RawProcurementCorpIndustry[];
+  industryDetailSummary?: string;
   rgnNm?: string;
   telNo?: string;
+};
+
+export type RawProcurementCorpIndustry = Record<string, unknown> & {
+  bizno?: string;
+  chgDt?: string;
+  indstrytyCd?: string;
+  indstrytyNm?: string;
+  indstrytyStatsNm?: string;
+  rgstDt?: string;
+  rprsntIndstrytyYn?: string;
+  systmChgDt?: string;
+  systmRgstDt?: string;
+  vldPrdExprtDt?: string;
 };
 
 export type ProcurementCorpRow = {
@@ -64,6 +82,7 @@ export type ProcurementCorpRow = {
   "상세주소": string;
   "지역명": string;
   "업종/업무구분": string;
+  "업종상세": string;
   "전화번호": string;
   "팩스번호": string;
   "홈페이지주소": string;
@@ -93,6 +112,7 @@ export type FieldPresence = {
 export class NaraProcurementCorpClient {
   private readonly apiKey: string;
   private readonly endpoint: string;
+  private readonly industryEndpoint: string;
   private readonly fetchImpl: typeof fetch;
   private readonly requestDelayMs: number;
   private readonly retryDelaysMs: readonly number[];
@@ -104,6 +124,7 @@ export class NaraProcurementCorpClient {
 
     this.apiKey = config.apiKey;
     this.endpoint = config.endpoint ?? PROCUREMENT_CORP_ENDPOINT;
+    this.industryEndpoint = config.industryEndpoint ?? PROCUREMENT_CORP_INDUSTRY_ENDPOINT;
     this.fetchImpl = config.fetch ?? fetch;
     this.requestDelayMs = config.requestDelayMs ?? 250;
     this.retryDelaysMs = config.retryDelaysMs ?? [1000, 2500, 5000];
@@ -166,6 +187,66 @@ export class NaraProcurementCorpClient {
     }
 
     return corporations;
+  }
+
+  async collectIndustryDetailsByBusinessNumber(
+    businessNumber: string,
+    options: ProcurementCorpSearchOptions = {}
+  ): Promise<RawProcurementCorpIndustry[]> {
+    const numOfRows = options.numOfRows ?? 100;
+    const industries: RawProcurementCorpIndustry[] = [];
+
+    for (let pageNo = options.pageNo ?? 1; ; pageNo += 1) {
+      const url = this.buildIndustryDetailsLookupUrl(businessNumber, { ...options, pageNo, numOfRows });
+      const response = await this.fetchWithRetry(url);
+
+      if (!response.ok) {
+        throw new Error(`Nara procurement corp industry API request failed: ${response.status} ${response.statusText}`);
+      }
+
+      const payload = (await response.json()) as unknown;
+      if (isNoDataResult(payload)) {
+        break;
+      }
+      throwIfApiError(payload);
+
+      const pageItems = extractItems(payload) as RawProcurementCorpIndustry[];
+      industries.push(...pageItems);
+
+      if (!shouldLoadNextPage(payload, pageNo, numOfRows, pageItems.length)) {
+        break;
+      }
+    }
+
+    return industries;
+  }
+
+  async enrichCorporationsWithIndustryDetails(
+    corporations: RawProcurementCorp[],
+    options: { signal?: AbortSignal } = {}
+  ): Promise<RawProcurementCorp[]> {
+    const enriched: RawProcurementCorp[] = [];
+
+    for (const corporation of corporations) {
+      if (options.signal?.aborted) {
+        break;
+      }
+
+      const bizno = readString(corporation.bizno);
+      if (!bizno) {
+        enriched.push(corporation);
+        continue;
+      }
+
+      const industryDetails = await this.collectIndustryDetailsByBusinessNumber(bizno, { numOfRows: 100 });
+      enriched.push({
+        ...corporation,
+        industryDetails,
+        industryDetailSummary: summarizeIndustryDetails(industryDetails)
+      });
+    }
+
+    return enriched;
   }
 
   async collectAutoMonthly(options: ProcurementCorpAutoMonthlyOptions): Promise<RawProcurementCorp[]> {
@@ -251,6 +332,23 @@ export class NaraProcurementCorpClient {
     return url.toString();
   }
 
+  buildIndustryDetailsLookupUrl(businessNumber: string, options: ProcurementCorpSearchOptions = {}): string {
+    const normalizedBusinessNumber = normalizeBusinessNumber(businessNumber);
+    if (!normalizedBusinessNumber) {
+      throw new Error("Business number is required.");
+    }
+
+    const url = new URL(this.industryEndpoint);
+    url.searchParams.set("serviceKey", normalizeServiceKey(this.apiKey));
+    url.searchParams.set("type", "json");
+    url.searchParams.set("pageNo", String(options.pageNo ?? 1));
+    url.searchParams.set("numOfRows", String(options.numOfRows ?? 100));
+    url.searchParams.set("inqryDiv", options.inqryDiv ?? "1");
+    url.searchParams.set("bizno", normalizedBusinessNumber);
+
+    return url.toString();
+  }
+
   private async fetchWithRetry(url: string): Promise<Response> {
     await sleep(this.requestDelayMs);
     let response = await this.fetchImpl(url);
@@ -293,10 +391,34 @@ export function toProcurementCorpRows(corporations: RawProcurementCorp[]): Procu
     "상세주소": readString(corporation.dtlAdrs) ?? "",
     "지역명": readString(corporation.rgnNm) ?? "",
     "업종/업무구분": readString(corporation.corpBsnsDivNm) ?? "",
+    "업종상세": readString(corporation.industryDetailSummary) ?? "",
     "전화번호": readString(corporation.telNo) ?? "",
     "팩스번호": readString(corporation.faxNo) ?? "",
     "홈페이지주소": readString(corporation.hmpgAdrs) ?? ""
   }));
+}
+
+function summarizeIndustryDetails(industryDetails: RawProcurementCorpIndustry[]): string {
+  return industryDetails
+    .map((industry) => {
+      const name = readString(industry.indstrytyNm) ?? "";
+      const code = readString(industry.indstrytyCd);
+      if (!name && !code) {
+        return undefined;
+      }
+
+      const qualifiers = [code, readString(industry.indstrytyStatsNm)].filter(
+        (value): value is string => Boolean(value && value.trim())
+      );
+      if (readString(industry.rprsntIndstrytyYn)?.toUpperCase() === "Y") {
+        qualifiers.push("대표");
+      }
+
+      const label = name || code || "";
+      return qualifiers.length > 0 ? `${label}(${qualifiers.join(", ")})` : label;
+    })
+    .filter((value): value is string => Boolean(value))
+    .join("; ");
 }
 
 export function buildMonthlyCorpCollectionBatches(options: {
