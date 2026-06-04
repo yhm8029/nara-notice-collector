@@ -34,6 +34,99 @@ describe("local web server API", () => {
     expect(response.body.error).toBe("API 키를 입력하거나 로컬 환경변수 NARA_API_KEY를 설정하세요.");
   });
 
+  it("collects procurement corporation rows from the local API", async () => {
+    const fetchImpl = vi.fn().mockResolvedValueOnce(
+      responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "정상" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: {
+              item: [
+                {
+                  bizno: "1111111111",
+                  corpNm: "첫번째회사",
+                  ceoNm: "대표일",
+                  adrs: "서울특별시 중구",
+                  dtlAdrs: "1층",
+                  rgnNm: "서울특별시 중구",
+                  corpBsnsDivNm: "물품",
+                  telNo: "02-1111-1111",
+                  faxNo: "02-1111-1112",
+                  hmpgAdrs: "first.example.com"
+                }
+              ]
+            }
+          }
+        }
+      })
+    );
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    const response = await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-05", apiKey: "sample-key" })
+      .expect(200);
+
+    expect(response.body.rows).toEqual([
+      {
+        "No.": 1,
+        "사업자등록번호": "1111111111",
+        "업체명": "첫번째회사",
+        "대표자명": "대표일",
+        "주소": "서울특별시 중구",
+        "상세주소": "1층",
+        "지역명": "서울특별시 중구",
+        "업종/업무구분": "물품",
+        "전화번호": "02-1111-1111",
+        "팩스번호": "02-1111-1112",
+        "홈페이지주소": "first.example.com"
+      }
+    ]);
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryDiv=2");
+  });
+
+  it("collects procurement corporations without visible date inputs by using the automatic range", async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(
+      responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "정상" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: {
+              item: [
+                {
+                  bizno: "1111111111",
+                  corpNm: "자동수집회사",
+                  ceoNm: "대표일"
+                }
+              ]
+            }
+          }
+        }
+      })
+    );
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    const response = await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({
+        apiKey: "sample-key",
+        workerCount: 5,
+        from: "2026-01-01",
+        to: "2026-01-31"
+      })
+      .expect(200);
+
+    expect(response.body.rows[0]["업체명"]).toBe("자동수집회사");
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryBgnDt=202601010000");
+    expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);

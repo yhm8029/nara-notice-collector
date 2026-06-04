@@ -15,7 +15,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -50,7 +51,8 @@ button:disabled {
   opacity: 0.55;
 }
 
-input {
+input,
+select {
   min-height: 38px;
   width: 100%;
   border: 1px solid #c9d0dc;
@@ -60,9 +62,57 @@ input {
 }
 
 .app-shell {
-  width: min(1480px, calc(100vw - 32px));
+  display: grid;
+  grid-template-columns: minmax(220px, 30%) minmax(0, 1fr);
+  gap: 18px;
+  width: min(1580px, calc(100vw - 32px));
+  min-height: 100vh;
   margin: 0 auto;
   padding: 20px 0 28px;
+}
+
+.sidebar {
+  position: sticky;
+  top: 20px;
+  align-self: start;
+  min-height: calc(100vh - 48px);
+  border: 1px solid #dde2ea;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.brand p {
+  margin: 6px 0 18px;
+  color: #5f6673;
+}
+
+.side-menu {
+  display: grid;
+  gap: 8px;
+}
+
+.side-menu button {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 42px;
+}
+
+.side-menu button.active {
+  border-color: #1f6feb;
+  color: #ffffff;
+  background: #1f6feb;
+}
+
+.workspace {
+  min-width: 0;
 }
 
 .topbar {
@@ -73,7 +123,7 @@ input {
   padding: 12px 0 18px;
 }
 
-.topbar h1 {
+.topbar h2 {
   margin: 0;
   font-size: 24px;
   line-height: 1.2;
@@ -113,11 +163,26 @@ input {
   flex: 1;
 }
 
+.corp-controls label {
+  min-width: 150px;
+}
+
+.control-note {
+  flex-basis: 100%;
+  margin: 0;
+  color: #5f6673;
+  font-size: 13px;
+}
+
 .summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin: 14px 0;
+}
+
+.corp-summary {
+  grid-template-columns: minmax(180px, 260px);
 }
 
 .summary div {
@@ -155,11 +220,29 @@ input {
   background: #ffffff;
 }
 
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.pagination span {
+  min-width: 88px;
+  color: #303642;
+  text-align: center;
+}
+
 table {
   width: 100%;
   min-width: 1260px;
   border-collapse: collapse;
   table-layout: fixed;
+}
+
+table.corp-table {
+  min-width: 1380px;
 }
 
 th,
@@ -204,8 +287,14 @@ td.wide {
 
 @media (max-width: 760px) {
   .app-shell {
+    grid-template-columns: 1fr;
     width: min(100vw - 20px, 1480px);
     padding-top: 10px;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
   }
 
   .topbar {
