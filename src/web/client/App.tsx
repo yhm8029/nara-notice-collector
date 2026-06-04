@@ -1,5 +1,13 @@
-import { Download, ExternalLink, FileSpreadsheet, Loader2, Search, TableProperties } from "lucide-react";
-import { useMemo, useState } from "react";
+import {
+  Building2,
+  Download,
+  ExternalLink,
+  FileSpreadsheet,
+  Loader2,
+  Search,
+  TableProperties
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 type NoticeRow = {
   "No.": number;
@@ -11,6 +19,20 @@ type NoticeRow = {
   "마감일": string;
   "업종제한": string;
   "원문링크": string;
+};
+
+type ProcurementCorpRow = {
+  "No.": number;
+  "사업자등록번호": string;
+  "업체명": string;
+  "대표자명": string;
+  "주소": string;
+  "상세주소": string;
+  "지역명": string;
+  "업종/업무구분": string;
+  "전화번호": string;
+  "팩스번호": string;
+  "홈페이지주소": string;
 };
 
 type NormalizedNotice = {
@@ -32,13 +54,36 @@ type NoticePayload = {
   notices: NormalizedNotice[];
 };
 
+type ProcurementCorpPayload = {
+  rows: ProcurementCorpRow[];
+};
+
+type ProcurementCorpPagePayload = {
+  page: number;
+  pageSize: number;
+  totalCount: number;
+  totalPages: number;
+  rows: ProcurementCorpRow[];
+};
+
+type ProcurementCorpCollectionStatus = {
+  error?: string;
+  finishedAt?: string;
+  running: boolean;
+  savedCount: number;
+  startedAt?: string;
+  stopRequested: boolean;
+};
+
 type ViewerUrlPayload = {
   mode: "synap" | "source";
   viewerUrl: string;
   message?: string;
 };
 
-const columns: (keyof NoticeRow)[] = [
+type ActiveView = "notices" | "corps";
+
+const noticeColumns: (keyof NoticeRow)[] = [
   "No.",
   "공고번호",
   "공고명",
@@ -50,17 +95,64 @@ const columns: (keyof NoticeRow)[] = [
   "원문링크"
 ];
 
-const tableColumns = [...columns, "공고문"] as const;
+const noticeTableColumns = [...noticeColumns, "공고문"] as const;
+
+const corpColumns: (keyof ProcurementCorpRow)[] = [
+  "No.",
+  "사업자등록번호",
+  "업체명",
+  "대표자명",
+  "주소",
+  "상세주소",
+  "지역명",
+  "업종/업무구분",
+  "전화번호",
+  "팩스번호",
+  "홈페이지주소"
+];
 
 export function App() {
+  const [activeView, setActiveView] = useState<ActiveView>("notices");
   const [rows, setRows] = useState<NoticeRow[]>([]);
   const [notices, setNotices] = useState<NormalizedNotice[]>([]);
   const [from, setFrom] = useState("2026-05-01");
   const [to, setTo] = useState("2026-05-31");
   const [keyword, setKeyword] = useState("행정복지센터");
   const [apiKey, setApiKey] = useState("");
+  const [corpRows, setCorpRows] = useState<ProcurementCorpRow[]>([]);
+  const [corpPage, setCorpPage] = useState(1);
+  const [corpTotalCount, setCorpTotalCount] = useState(0);
+  const [corpTotalPages, setCorpTotalPages] = useState(1);
+  const [corpStatus, setCorpStatus] = useState<ProcurementCorpCollectionStatus>({
+    running: false,
+    savedCount: 0,
+    stopRequested: false
+  });
+  const [corpApiKey, setCorpApiKey] = useState("");
+  const [corpInqryDiv, setCorpInqryDiv] = useState("2");
+  const [corpWorkerCount, setCorpWorkerCount] = useState(2);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState("");
+
+  useEffect(() => {
+    if (activeView !== "corps") {
+      return;
+    }
+
+    void refreshProcurementCorpStatus();
+    void loadProcurementCorpPage(corpPage);
+
+    if (!corpStatus.running) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshProcurementCorpStatus();
+      void loadProcurementCorpPage(corpPage);
+    }, 2000);
+
+    return () => window.clearInterval(timer);
+  }, [activeView, corpPage, corpStatus.running]);
 
   const summary = useMemo(() => {
     const construction = rows.filter((row) => row["구분"] === "공사").length;
@@ -99,6 +191,66 @@ export function App() {
       setError(toErrorMessage(error));
     } finally {
       setLoading("");
+    }
+  }
+
+  async function startProcurementCorpCollection() {
+    setLoading("corp-collect");
+    setError("");
+    try {
+      const status = await fetchJson<ProcurementCorpCollectionStatus>("/api/procurement-corps/start", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          apiKey: corpApiKey,
+          inqryDiv: corpInqryDiv,
+          workerCount: corpWorkerCount
+        })
+      });
+      setCorpStatus(status);
+      setCorpPage(1);
+      await loadProcurementCorpPage(1);
+    } catch (error) {
+      setError(toErrorMessage(error));
+    } finally {
+      setLoading("");
+    }
+  }
+
+  async function stopProcurementCorpCollection() {
+    setError("");
+    try {
+      setCorpStatus(
+        await fetchJson<ProcurementCorpCollectionStatus>("/api/procurement-corps/stop", {
+          method: "POST"
+        })
+      );
+    } catch (error) {
+      setError(toErrorMessage(error));
+    }
+  }
+
+  async function refreshProcurementCorpStatus() {
+    try {
+      const status = await fetchJson<ProcurementCorpCollectionStatus>("/api/procurement-corps/status");
+      setCorpStatus(status);
+      if (status.error) {
+        setError(status.error);
+      }
+    } catch (error) {
+      setError(toErrorMessage(error));
+    }
+  }
+
+  async function loadProcurementCorpPage(page: number) {
+    try {
+      const payload = await fetchJson<ProcurementCorpPagePayload>(`/api/procurement-corps?page=${page}&pageSize=20`);
+      setCorpRows(payload.rows);
+      setCorpPage(payload.page);
+      setCorpTotalCount(payload.totalCount);
+      setCorpTotalPages(payload.totalPages);
+    } catch (error) {
+      setError(toErrorMessage(error));
     }
   }
 
@@ -159,130 +311,287 @@ export function App() {
 
   return (
     <main className="app-shell">
-      <header className="topbar">
-        <div>
+      <aside className="sidebar" aria-label="메뉴">
+        <div className="brand">
           <h1>nara-notice-collector</h1>
-          <p>나라장터 공고 검토 테이블</p>
+          <p>나라장터 로컬 수집 도구</p>
         </div>
-        <div className="topbar-actions">
-          <button className="primary" type="button" onClick={loadSample} disabled={loading !== ""}>
-            {loading === "sample" ? <Loader2 className="spin" size={18} /> : <TableProperties size={18} />}
-            샘플 데이터
+        <nav className="side-menu">
+          <button
+            className={activeView === "notices" ? "active" : ""}
+            type="button"
+            onClick={() => setActiveView("notices")}
+          >
+            <TableProperties size={18} />
+            나라장터 공고 검토
           </button>
-          <button type="button" onClick={() => download("csv")} disabled={loading !== "" || notices.length === 0}>
-            <Download size={18} />
-            CSV
+          <button
+            className={activeView === "corps" ? "active" : ""}
+            type="button"
+            onClick={() => setActiveView("corps")}
+          >
+            <Building2 size={18} />
+            사업자 조회
           </button>
-          <button type="button" onClick={() => download("xlsx")} disabled={loading !== "" || notices.length === 0}>
-            <FileSpreadsheet size={18} />
-            Excel
-          </button>
-        </div>
-      </header>
+        </nav>
+      </aside>
 
-      <section className="controls" aria-label="API 수집">
-        <label>
-          시작일
-          <input value={from} onChange={(event) => setFrom(event.target.value)} />
-        </label>
-        <label>
-          종료일
-          <input value={to} onChange={(event) => setTo(event.target.value)} />
-        </label>
-        <label>
-          키워드
-          <input value={keyword} onChange={(event) => setKeyword(event.target.value)} />
-        </label>
-        <label className="api-key">
-          API 키
-          <input
-            value={apiKey}
-            onChange={(event) => setApiKey(event.target.value)}
-            type="password"
-            autoComplete="off"
-          />
-        </label>
-        <button className="primary" type="button" onClick={collectNotices} disabled={loading !== ""}>
-          {loading === "collect" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}
-          API 수집
-        </button>
-      </section>
-
-      {error ? <div className="error">{error}</div> : null}
-
-      <section className="summary" aria-label="요약">
-        <div>
-          <span>전체</span>
-          <strong>{summary.total}</strong>
-        </div>
-        <div>
-          <span>공사</span>
-          <strong>{summary.construction}</strong>
-        </div>
-        <div>
-          <span>물품</span>
-          <strong>{summary.goods}</strong>
-        </div>
-        <div>
-          <span>용역</span>
-          <strong>{summary.service}</strong>
-        </div>
-        <div>
-          <span>내자</span>
-          <strong>{summary.domestic}</strong>
-        </div>
-      </section>
-
-      <section className="table-wrap" aria-label="공고 목록">
-        <table>
-          <thead>
-            <tr>
-              {tableColumns.map((column) => (
-                <th key={column}>{column}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td className="empty" colSpan={tableColumns.length}>
-                  표시할 공고가 없습니다.
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr key={row["공고번호"]}>
-                  {columns.map((column) => (
-                    <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
-                      {column === "원문링크" && row[column] ? (
-                        <a href={row[column]} target="_blank" rel="noreferrer">
-                          열기
-                        </a>
-                      ) : (
-                        row[column]
-                      )}
-                    </td>
-                  ))}
-                  <td>
-                    <button
-                      className="compact"
-                      type="button"
-                      onClick={() => void openNoticeDocument(row)}
-                      disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl}
-                      title="나라장터 첨부파일을 Synap 공고문 뷰어로 엽니다."
-                    >
-                      <ExternalLink size={16} />
-                      보기
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <section className="workspace">
+        {error ? <div className="error">{error}</div> : null}
+        <div hidden={activeView !== "notices"}>{renderNoticeView()}</div>
+        <div hidden={activeView !== "corps"}>{renderCorpView()}</div>
       </section>
     </main>
   );
+
+  function renderNoticeView() {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h2>나라장터 공고 검토</h2>
+            <p>나라장터 공고 검토 테이블</p>
+          </div>
+          <div className="topbar-actions">
+            <button className="primary" type="button" onClick={loadSample} disabled={loading !== ""}>
+              {loading === "sample" ? <Loader2 className="spin" size={18} /> : <TableProperties size={18} />}
+              샘플 데이터
+            </button>
+            <button type="button" onClick={() => download("csv")} disabled={loading !== "" || notices.length === 0}>
+              <Download size={18} />
+              CSV
+            </button>
+            <button type="button" onClick={() => download("xlsx")} disabled={loading !== "" || notices.length === 0}>
+              <FileSpreadsheet size={18} />
+              Excel
+            </button>
+          </div>
+        </header>
+
+        <section className="controls" aria-label="API 수집">
+          <label>
+            시작일
+            <input value={from} onChange={(event) => setFrom(event.target.value)} />
+          </label>
+          <label>
+            종료일
+            <input value={to} onChange={(event) => setTo(event.target.value)} />
+          </label>
+          <label>
+            키워드
+            <input value={keyword} onChange={(event) => setKeyword(event.target.value)} />
+          </label>
+          <label className="api-key">
+            API 키
+            <input
+              value={apiKey}
+              onChange={(event) => setApiKey(event.target.value)}
+              type="password"
+              autoComplete="off"
+            />
+          </label>
+          <button className="primary" type="button" onClick={collectNotices} disabled={loading !== ""}>
+            {loading === "collect" ? <Loader2 className="spin" size={18} /> : <Search size={18} />}
+            API 수집
+          </button>
+        </section>
+
+        <section className="summary" aria-label="요약">
+          <div>
+            <span>전체</span>
+            <strong>{summary.total}</strong>
+          </div>
+          <div>
+            <span>공사</span>
+            <strong>{summary.construction}</strong>
+          </div>
+          <div>
+            <span>물품</span>
+            <strong>{summary.goods}</strong>
+          </div>
+          <div>
+            <span>용역</span>
+            <strong>{summary.service}</strong>
+          </div>
+          <div>
+            <span>내자</span>
+            <strong>{summary.domestic}</strong>
+          </div>
+        </section>
+
+        <section className="table-wrap" aria-label="공고 목록">
+          <table>
+            <thead>
+              <tr>
+                {noticeTableColumns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {rows.length === 0 ? (
+                <tr>
+                  <td className="empty" colSpan={noticeTableColumns.length}>
+                    표시할 공고가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => (
+                  <tr key={row["공고번호"]}>
+                    {noticeColumns.map((column) => (
+                      <td key={column} className={column === "공고명" || column === "원문링크" ? "wide" : undefined}>
+                        {column === "원문링크" && row[column] ? (
+                          <a href={row[column]} target="_blank" rel="noreferrer">
+                            열기
+                          </a>
+                        ) : (
+                          row[column]
+                        )}
+                      </td>
+                    ))}
+                    <td>
+                      <button
+                        className="compact"
+                        type="button"
+                        onClick={() => void openNoticeDocument(row)}
+                        disabled={!notices.find((notice) => notice.noticeId === row["공고번호"])?.documentUrl}
+                        title="나라장터 첨부파일을 Synap 공고문 뷰어로 엽니다."
+                      >
+                        <ExternalLink size={16} />
+                        보기
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+      </>
+    );
+  }
+
+  function renderCorpView() {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h2>사업자 조회</h2>
+            <p>월별 자동 분할로 나라장터 조달업체 기본정보를 수집합니다.</p>
+          </div>
+        </header>
+
+        <section className="controls corp-controls" aria-label="사업자 번호 수집">
+          <label>
+            조회 기준
+            <select value={corpInqryDiv} onChange={(event) => setCorpInqryDiv(event.target.value)}>
+              <option value="2">변경일 기준</option>
+              <option value="1">등록일 기준</option>
+            </select>
+          </label>
+          <label>
+            워커 수
+            <input
+              value={corpWorkerCount}
+              min={1}
+              max={5}
+              onChange={(event) => setCorpWorkerCount(clampWorkerCount(Number(event.target.value)))}
+              type="number"
+            />
+          </label>
+          <label className="api-key">
+            API 키
+            <input
+              value={corpApiKey}
+              onChange={(event) => setCorpApiKey(event.target.value)}
+              type="password"
+              autoComplete="off"
+            />
+          </label>
+          <button
+            className="primary"
+            type="button"
+            onClick={startProcurementCorpCollection}
+            disabled={loading !== "" || corpStatus.running}
+          >
+            {loading === "corp-collect" ? <Loader2 className="spin" size={18} /> : <Building2 size={18} />}
+            사업자 수집
+          </button>
+          <button type="button" onClick={stopProcurementCorpCollection} disabled={!corpStatus.running}>
+            멈춤
+          </button>
+          <p className="control-note">월별로 쪼개고 10개월 단위 작업을 최대 5개 워커가 병렬 처리합니다. 50개마다 DB에 저장하고 화면을 갱신합니다. 429가 나면 워커 수를 낮추세요.</p>
+        </section>
+
+        <section className="summary corp-summary" aria-label="사업자 수집 요약">
+          <div>
+            <span>DB 저장 업체</span>
+            <strong>{corpTotalCount}</strong>
+          </div>
+          <div>
+            <span>이번 작업 저장</span>
+            <strong>{corpStatus.savedCount}</strong>
+          </div>
+          <div>
+            <span>상태</span>
+            <strong>{corpStatus.running ? "수집중" : corpStatus.stopRequested ? "중지됨" : "대기"}</strong>
+          </div>
+        </section>
+
+        <section className="table-wrap" aria-label="사업자 목록">
+          <table className="corp-table">
+            <thead>
+              <tr>
+                {corpColumns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {corpRows.length === 0 ? (
+                <tr>
+                  <td className="empty" colSpan={corpColumns.length}>
+                    표시할 사업자가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                corpRows.map((row) => (
+                  <tr key={`${row["No."]}-${row["사업자등록번호"]}`}>
+                    {corpColumns.map((column) => (
+                      <td key={column} className={column === "주소" || column === "상세주소" ? "wide" : undefined}>
+                        {column === "홈페이지주소" && row[column] ? (
+                          <a href={toExternalUrl(row[column])} target="_blank" rel="noreferrer">
+                            {row[column]}
+                          </a>
+                        ) : (
+                          row[column]
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+        <div className="pagination">
+          <button type="button" onClick={() => void loadProcurementCorpPage(corpPage - 1)} disabled={corpPage <= 1}>
+            이전
+          </button>
+          <span>
+            {corpPage} / {corpTotalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => void loadProcurementCorpPage(corpPage + 1)}
+            disabled={corpPage >= corpTotalPages}
+          >
+            다음
+          </button>
+        </div>
+      </>
+    );
+  }
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -304,4 +613,15 @@ async function readError(response: Response): Promise<string> {
 
 function toErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+function toExternalUrl(value: string): string {
+  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
+}
+
+function clampWorkerCount(value: number): number {
+  if (!Number.isFinite(value)) {
+    return 5;
+  }
+  return Math.min(5, Math.max(1, Math.floor(value)));
 }

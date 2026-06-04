@@ -4,6 +4,8 @@ import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { exportNoticesToCsv } from "../export/csv-exporter.js";
 import { exportNoticesToExcelBuffer } from "../export/excel-exporter.js";
 import { NaraApiClient } from "../nara/client.js";
+import { NaraProcurementCorpClient, toProcurementCorpRows } from "../nara/procurement-corp-client.js";
+import { ProcurementCorpStore } from "../nara/procurement-corp-store.js";
 import type { NormalizedNotice } from "../nara/types.js";
 import { loadSampleRawNotices } from "../nara/sample-client.js";
 import { normalizeNotices } from "../normalize/notice-normalizer.js";
@@ -17,8 +19,24 @@ export type CreateWebAppOptions = {
   fetch?: typeof fetch;
 };
 
+type ProcurementCorpCollectionJob = {
+  abortController: AbortController;
+  error?: string;
+  finishedAt?: string;
+  running: boolean;
+  savedCount: number;
+  startedAt: string;
+  stopRequested: boolean;
+};
+
 export async function createWebApp(options: CreateWebAppOptions = {}): Promise<Express> {
   const app = express();
+  const corpStore = new ProcurementCorpStore(
+    options.env?.PROCUREMENT_CORP_DB_PATH ??
+      process.env.PROCUREMENT_CORP_DB_PATH ??
+      (options.enableVite === false ? ":memory:" : undefined)
+  );
+  let corpCollectionJob: ProcurementCorpCollectionJob | undefined;
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/sample-notices", async (_request, response) => {
@@ -54,6 +72,103 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     } catch (error) {
       response.status(502).json({ error: error instanceof Error ? error.message : String(error) });
     }
+  });
+
+  app.post("/api/procurement-corps/collect", async (request, response) => {
+    const { from, to, apiKey, inqryDiv, workerCount } = request.body as {
+      from?: string;
+      to?: string;
+      apiKey?: string;
+      inqryDiv?: string;
+      workerCount?: number;
+    };
+
+    const resolvedApiKey = apiKey || options.env?.NARA_API_KEY || process.env.NARA_API_KEY;
+    if (!resolvedApiKey) {
+      response.status(400).json({ error: "NARA_API_KEY is required." });
+      return;
+    }
+
+    try {
+      const client = new NaraProcurementCorpClient({ apiKey: resolvedApiKey, fetch: options.fetch });
+      const corporations = await client.collectAutoMonthly({
+        from: from ?? "2000-01-01",
+        to: to ?? formatToday(),
+        inqryDiv,
+        workerCount: workerCount ?? 2,
+        monthsPerWorker: 10,
+        numOfRows: 100,
+        flushSize: 50,
+        onItems: (items) => {
+          corpStore.upsertMany(items);
+        }
+      });
+      response.json({
+        corporations,
+        rows: toProcurementCorpRows(corporations)
+      });
+    } catch (error) {
+      response.status(502).json({ error: error instanceof Error ? error.message : String(error) });
+    }
+  });
+
+  app.post("/api/procurement-corps/start", (request, response) => {
+    const { apiKey, inqryDiv, workerCount } = request.body as {
+      apiKey?: string;
+      inqryDiv?: string;
+      workerCount?: number;
+    };
+    if (corpCollectionJob?.running) {
+      response.status(409).json({ error: "Procurement corporation collection is already running." });
+      return;
+    }
+
+    const resolvedApiKey = apiKey || options.env?.NARA_API_KEY || process.env.NARA_API_KEY;
+    if (!resolvedApiKey) {
+      response.status(400).json({ error: "NARA_API_KEY is required." });
+      return;
+    }
+
+    const abortController = new AbortController();
+    corpCollectionJob = {
+      abortController,
+      running: true,
+      savedCount: 0,
+      startedAt: new Date().toISOString(),
+      stopRequested: false
+    };
+
+    void runProcurementCorpCollection({
+      apiKey: resolvedApiKey,
+      fetchImpl: options.fetch,
+      inqryDiv,
+      job: corpCollectionJob,
+      store: corpStore,
+      workerCount
+    });
+
+    response.json(toProcurementCorpCollectionStatus(corpCollectionJob));
+  });
+
+  app.post("/api/procurement-corps/stop", (_request, response) => {
+    if (corpCollectionJob?.running) {
+      corpCollectionJob.stopRequested = true;
+      corpCollectionJob.abortController.abort();
+    }
+    response.json(toProcurementCorpCollectionStatus(corpCollectionJob));
+  });
+
+  app.get("/api/procurement-corps/status", (_request, response) => {
+    response.json(toProcurementCorpCollectionStatus(corpCollectionJob));
+  });
+
+  app.get("/api/procurement-corps", (request, response) => {
+    response.json(
+      corpStore.listRows({
+        page: readQueryNumber(request.query.page, 1),
+        pageSize: readQueryNumber(request.query.pageSize, 20)
+      })
+    );
   });
 
   app.post("/api/export", async (request, response) => {
@@ -280,6 +395,59 @@ async function createViteMiddleware(): Promise<ViteDevServer> {
     server: { middlewareMode: true },
     appType: "spa"
   });
+}
+
+function readQueryNumber(value: unknown, fallback: number): number {
+  const text = readQueryString(value);
+  const parsed = Number(text);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+async function runProcurementCorpCollection(input: {
+  apiKey: string;
+  fetchImpl?: typeof fetch;
+  inqryDiv?: string;
+  job: ProcurementCorpCollectionJob;
+  store: ProcurementCorpStore;
+  workerCount?: number;
+}): Promise<void> {
+  try {
+    const client = new NaraProcurementCorpClient({ apiKey: input.apiKey, fetch: input.fetchImpl });
+    await client.collectAutoMonthly({
+      from: "2000-01-01",
+      to: formatToday(),
+      flushSize: 50,
+      inqryDiv: input.inqryDiv,
+      monthsPerWorker: 10,
+      numOfRows: 100,
+      onItems: (items) => {
+        input.job.savedCount += input.store.upsertMany(items);
+      },
+      signal: input.job.abortController.signal,
+      workerCount: input.workerCount ?? 2
+    });
+  } catch (error) {
+    input.job.error = error instanceof Error ? error.message : String(error);
+  } finally {
+    input.job.running = false;
+    input.job.finishedAt = new Date().toISOString();
+  }
+}
+
+function toProcurementCorpCollectionStatus(job: ProcurementCorpCollectionJob | undefined) {
+  return {
+    error: job?.error,
+    finishedAt: job?.finishedAt,
+    running: job?.running ?? false,
+    savedCount: job?.savedCount ?? 0,
+    startedAt: job?.startedAt,
+    stopRequested: job?.stopRequested ?? false
+  };
+}
+
+function formatToday(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

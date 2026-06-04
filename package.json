@@ -20,7 +20,8 @@
     "test": "vitest run --passWithNoTests",
     "sample": "tsx src/cli.ts sample",
     "web": "tsx src/web/server.ts",
-    "web:build": "vite build"
+    "web:build": "vite build",
+    "corp:check": "tsx src/nara/check-procurement-corp.ts"
   },
   "engines": {
     "node": ">=20"
