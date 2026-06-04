@@ -13,6 +13,7 @@ describe("ProcurementCorpStore", () => {
       dtlAdrs: `${index + 1}층`,
       rgnNm: "서울특별시 중구",
       corpBsnsDivNm: "물품",
+      industryDetailSummary: index === 0 ? "software business(1426, normal)" : "",
       telNo: "02-0000-0000",
       faxNo: "",
       hmpgAdrs: ""
@@ -31,5 +32,6 @@ describe("ProcurementCorpStore", () => {
     expect(secondPage.rows).toHaveLength(5);
     expect(secondPage.rows[0]?.["No."]).toBe(21);
     expect(secondPage.rows[0]?.["사업자등록번호"]).toBe("1000000020");
+    expect(firstPage.rows[0]?.["업종상세"]).toBe("software business(1426, normal)");
   });
 });

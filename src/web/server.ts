@@ -91,6 +91,8 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
 
     try {
       const client = new NaraProcurementCorpClient({ apiKey: resolvedApiKey, fetch: options.fetch });
+      const enrichedCorporations: Awaited<ReturnType<NaraProcurementCorpClient["enrichCorporationsWithIndustryDetails"]>> =
+        [];
       const corporations = await client.collectAutoMonthly({
         from: from ?? "2000-01-01",
         to: to ?? formatToday(),
@@ -99,13 +101,16 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
         monthsPerWorker: 10,
         numOfRows: 100,
         flushSize: 50,
-        onItems: (items) => {
-          corpStore.upsertMany(items);
+        onItems: async (items) => {
+          const enriched = await client.enrichCorporationsWithIndustryDetails(items);
+          enrichedCorporations.push(...enriched);
+          corpStore.upsertMany(enriched);
         }
       });
+      const responseCorporations = enrichedCorporations.length > 0 ? enrichedCorporations : corporations;
       response.json({
-        corporations,
-        rows: toProcurementCorpRows(corporations)
+        corporations: responseCorporations,
+        rows: toProcurementCorpRows(responseCorporations)
       });
     } catch (error) {
       response.status(502).json({ error: error instanceof Error ? error.message : String(error) });
@@ -420,8 +425,11 @@ async function runProcurementCorpCollection(input: {
       inqryDiv: input.inqryDiv,
       monthsPerWorker: 10,
       numOfRows: 100,
-      onItems: (items) => {
-        input.job.savedCount += input.store.upsertMany(items);
+      onItems: async (items) => {
+        const enriched = await client.enrichCorporationsWithIndustryDetails(items, {
+          signal: input.job.abortController.signal
+        });
+        input.job.savedCount += input.store.upsertMany(enriched);
       },
       signal: input.job.abortController.signal,
       workerCount: input.workerCount ?? 2
