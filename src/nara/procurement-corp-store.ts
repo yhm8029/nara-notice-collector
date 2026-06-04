@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
+import { createRequire } from "node:module";
 import { dirname, resolve } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 import { toProcurementCorpRows, type ProcurementCorpRow, type RawProcurementCorp } from "./procurement-corp-client.js";
 
 export type ProcurementCorpPage = {
@@ -12,17 +12,31 @@ export type ProcurementCorpPage = {
 };
 
 export class ProcurementCorpStore {
-  private readonly db: DatabaseSync;
+  private readonly db: SqliteDatabase | undefined;
+  private readonly memoryRows = new Map<string, RawProcurementCorp>();
 
   constructor(dbPath = resolve(process.cwd(), "output/procurement-corps.sqlite")) {
-    if (dbPath !== ":memory:") {
+    const DatabaseSync = loadSqliteDatabaseSync();
+    if (DatabaseSync && dbPath !== ":memory:") {
       mkdirSync(dirname(dbPath), { recursive: true });
     }
-    this.db = new DatabaseSync(dbPath);
-    this.initialize();
+    this.db = DatabaseSync ? new DatabaseSync(dbPath) : undefined;
+    this.initializeSqlite();
   }
 
   upsertMany(corporations: RawProcurementCorp[]): number {
+    if (!this.db) {
+      let count = 0;
+      for (const item of corporations) {
+        if (!item.bizno) {
+          continue;
+        }
+        this.memoryRows.set(item.bizno, item);
+        count += 1;
+      }
+      return count;
+    }
+
     const statement = this.db.prepare(`
       INSERT INTO procurement_corps (
         bizno,
@@ -82,6 +96,23 @@ export class ProcurementCorpStore {
     const pageSize = Math.max(1, Math.floor(options.pageSize ?? 20));
     const page = Math.max(1, Math.floor(options.page ?? 1));
     const offset = (page - 1) * pageSize;
+    if (!this.db) {
+      const corporations = [...this.memoryRows.values()].sort((left, right) =>
+        (left.bizno ?? "").localeCompare(right.bizno ?? "")
+      );
+      const totalCount = corporations.length;
+      return {
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
+        rows: toProcurementCorpRows(corporations.slice(offset, offset + pageSize)).map((row, index) => ({
+          ...row,
+          "No.": offset + index + 1
+        }))
+      };
+    }
+
     const totalCount = Number(
       (this.db.prepare("SELECT COUNT(*) AS count FROM procurement_corps").get() as { count: number }).count
     );
@@ -118,7 +149,11 @@ export class ProcurementCorpStore {
     };
   }
 
-  private initialize(): void {
+  private initializeSqlite(): void {
+    if (!this.db) {
+      return;
+    }
+
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS procurement_corps (
         bizno TEXT PRIMARY KEY,
@@ -137,5 +172,23 @@ export class ProcurementCorpStore {
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_rgn_nm ON procurement_corps(rgn_nm);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_updated_at ON procurement_corps(updated_at);
     `);
+  }
+}
+
+type SqliteDatabase = {
+  exec(sql: string): void;
+  prepare(sql: string): {
+    all(...params: unknown[]): unknown[];
+    get(...params: unknown[]): unknown;
+    run(...params: unknown[]): unknown;
+  };
+};
+
+function loadSqliteDatabaseSync(): (new (path: string) => SqliteDatabase) | undefined {
+  try {
+    const require = createRequire(import.meta.url);
+    return (require("node:sqlite") as { DatabaseSync: new (path: string) => SqliteDatabase }).DatabaseSync;
+  } catch {
+    return undefined;
   }
 }
