@@ -67,7 +67,17 @@ export function extractEmailsFromHtml(html: string): string[] {
 export async function crawlHomepageForEmails(options: EmailCrawlOptions): Promise<EmailCrawlResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const maxPages = Math.max(1, Math.floor(options.maxPages ?? 4));
-  const startUrl = normalizeHomepageUrl(options.homepageUrl);
+  let startUrl: string;
+  try {
+    startUrl = normalizeHomepageUrl(options.homepageUrl);
+  } catch (error) {
+    return {
+      emails: [],
+      error: error instanceof Error ? error.message : String(error),
+      sourceUrls: [],
+      status: "failed"
+    };
+  }
   const queue = [startUrl];
   const visited = new Set<string>();
   const emails = new Set<string>();
