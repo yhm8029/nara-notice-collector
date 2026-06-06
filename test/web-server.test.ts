@@ -295,6 +295,79 @@ describe("local web server API", () => {
     expect(response.body.rows[0]["업종상세"]).toBe("전기공사업(0037, 대표)");
   });
 
+  it("runs the email collection bot and exports company email rows as XLSX", async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      const textUrl = String(url);
+      if (textUrl.includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "normal" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bizno: "1111111111",
+                    indstrytyCd: "1426",
+                    indstrytyNm: "software business"
+                  }
+                ]
+              }
+            }
+          }
+        });
+      }
+
+      if (textUrl === "https://email.example.com/") {
+        return htmlResponse('<a href="/contact">Contact</a>');
+      }
+
+      if (textUrl === "https://email.example.com/contact") {
+        return htmlResponse("<p>contact@email.example.com</p>");
+      }
+
+      return responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "normal" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: {
+              item: [
+                {
+                  bizno: "1111111111",
+                  corpNm: "email corporation",
+                  hmpgAdrs: "email.example.com"
+                }
+              ]
+            }
+          }
+        }
+      });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl as unknown as typeof fetch });
+
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-30", apiKey: "sample-key" })
+      .expect(200);
+
+    await request(app).post("/api/email-collection/start").send({}).expect(200);
+    await waitForEmailCollection(app);
+
+    const candidates = await request(app).get("/api/email-collection/candidates?page=1&pageSize=20").expect(200);
+    expect(candidates.body.rows[0]["이메일"]).toBe("contact@email.example.com");
+
+    const exportResponse = await request(app).get("/api/email-collection/export.xlsx").expect(200);
+    expect(exportResponse.header["content-type"]).toContain(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    expect(Number(exportResponse.header["content-length"])).toBeGreaterThan(1000);
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);
@@ -442,4 +515,26 @@ function responseJson(body: unknown) {
     status: 200,
     json: async () => body
   };
+}
+
+function htmlResponse(body: string) {
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    text: async () => body
+  };
+}
+
+async function waitForEmailCollection(app: Awaited<ReturnType<typeof createWebApp>>) {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const response = await request(app).get("/api/email-collection/status").expect(200);
+    if (!response.body.running) {
+      expect(response.body.error).toBeUndefined();
+      return;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  throw new Error("email collection did not finish");
 }

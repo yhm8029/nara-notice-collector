@@ -74,6 +74,10 @@ export type RawProcurementCorp = Record<string, unknown> & {
   corpBsnsDivNm?: string;
   corpNm?: string;
   dtlAdrs?: string;
+  emailAddresses?: string;
+  emailCheckedAt?: string;
+  emailSourceUrl?: string;
+  emailStatus?: string;
   faxNo?: string;
   hmpgAdrs?: string;
   industryDetails?: RawProcurementCorpIndustry[];
@@ -108,6 +112,9 @@ export type ProcurementCorpRow = {
   "전화번호": string;
   "팩스번호": string;
   "홈페이지주소": string;
+  "이메일"?: string;
+  "이메일상태"?: string;
+  "이메일출처"?: string;
 };
 
 export type ProcurementCorpSummary = {
@@ -432,20 +439,31 @@ export function summarizeProcurementCorp(item: RawProcurementCorp): ProcurementC
 }
 
 export function toProcurementCorpRows(corporations: RawProcurementCorp[]): ProcurementCorpRow[] {
-  return corporations.map((corporation, index) => ({
-    "No.": index + 1,
-    "사업자등록번호": readString(corporation.bizno) ?? "",
-    "업체명": readString(corporation.corpNm) ?? "",
-    "대표자명": readString(corporation.ceoNm) ?? "",
-    "주소": readString(corporation.adrs) ?? "",
-    "상세주소": readString(corporation.dtlAdrs) ?? "",
-    "지역명": readString(corporation.rgnNm) ?? "",
-    "업종/업무구분": readString(corporation.corpBsnsDivNm) ?? "",
-    "업종상세": readString(corporation.industryDetailSummary) ?? "",
-    "전화번호": readString(corporation.telNo) ?? "",
-    "팩스번호": readString(corporation.faxNo) ?? "",
-    "홈페이지주소": readString(corporation.hmpgAdrs) ?? ""
-  }));
+  return corporations.map((corporation, index) => {
+    const row: ProcurementCorpRow = {
+      "No.": index + 1,
+      "사업자등록번호": readString(corporation.bizno) ?? "",
+      "업체명": readString(corporation.corpNm) ?? "",
+      "대표자명": readString(corporation.ceoNm) ?? "",
+      "주소": readString(corporation.adrs) ?? "",
+      "상세주소": readString(corporation.dtlAdrs) ?? "",
+      "지역명": readString(corporation.rgnNm) ?? "",
+      "업종/업무구분": readString(corporation.corpBsnsDivNm) ?? "",
+      "업종상세": readString(corporation.industryDetailSummary) ?? "",
+      "전화번호": readString(corporation.telNo) ?? "",
+      "팩스번호": readString(corporation.faxNo) ?? "",
+      "홈페이지주소": readString(corporation.hmpgAdrs) ?? ""
+    };
+    const emailAddresses = readString(corporation.emailAddresses);
+    const emailStatus = readString(corporation.emailStatus);
+    const emailSourceUrl = readString(corporation.emailSourceUrl);
+    if (emailAddresses || emailStatus || emailSourceUrl) {
+      row["이메일"] = emailAddresses ?? "";
+      row["이메일상태"] = emailStatus ?? "";
+      row["이메일출처"] = emailSourceUrl ?? "";
+    }
+    return row;
+  });
 }
 
 function summarizeIndustryDetails(industryDetails: RawProcurementCorpIndustry[]): string {

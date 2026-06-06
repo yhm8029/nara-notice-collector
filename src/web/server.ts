@@ -2,7 +2,8 @@ import express, { type Express } from "express";
 import { pathToFileURL } from "node:url";
 import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { exportNoticesToCsv } from "../export/csv-exporter.js";
-import { exportNoticesToExcelBuffer } from "../export/excel-exporter.js";
+import { exportEmailResultsToExcelBuffer, exportNoticesToExcelBuffer } from "../export/excel-exporter.js";
+import { crawlHomepageForEmails } from "../email/email-crawler.js";
 import { NaraApiClient } from "../nara/client.js";
 import { NaraProcurementCorpClient, toProcurementCorpRows } from "../nara/procurement-corp-client.js";
 import { ProcurementCorpStore } from "../nara/procurement-corp-store.js";
@@ -29,6 +30,18 @@ type ProcurementCorpCollectionJob = {
   stopRequested: boolean;
 };
 
+type EmailCollectionJob = {
+  abortController: AbortController;
+  error?: string;
+  finishedAt?: string;
+  foundCount: number;
+  processedCount: number;
+  running: boolean;
+  startedAt: string;
+  stopRequested: boolean;
+  targetCount: number;
+};
+
 export async function createWebApp(options: CreateWebAppOptions = {}): Promise<Express> {
   const app = express();
   const corpStore = new ProcurementCorpStore(
@@ -37,6 +50,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
       (options.enableVite === false ? ":memory:" : undefined)
   );
   let corpCollectionJob: ProcurementCorpCollectionJob | undefined;
+  let emailCollectionJob: EmailCollectionJob | undefined;
   app.use(express.json({ limit: "5mb" }));
 
   app.get("/api/sample-notices", async (_request, response) => {
@@ -203,6 +217,54 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
         pageSize: readQueryNumber(request.query.pageSize, 20)
       })
     );
+  });
+
+  app.post("/api/email-collection/start", (_request, response) => {
+    if (emailCollectionJob?.running) {
+      response.status(409).json({ error: "Email collection is already running." });
+      return;
+    }
+
+    const abortController = new AbortController();
+    emailCollectionJob = {
+      abortController,
+      foundCount: 0,
+      processedCount: 0,
+      running: true,
+      startedAt: new Date().toISOString(),
+      stopRequested: false,
+      targetCount: corpStore.listEmailCrawlTargets(100000).length
+    };
+
+    void runEmailCollection({
+      fetchImpl: options.fetch,
+      job: emailCollectionJob,
+      store: corpStore
+    });
+
+    response.json(toEmailCollectionStatus(emailCollectionJob));
+  });
+
+  app.post("/api/email-collection/stop", (_request, response) => {
+    if (emailCollectionJob?.running) {
+      emailCollectionJob.stopRequested = true;
+      emailCollectionJob.abortController.abort();
+    }
+    response.json(toEmailCollectionStatus(emailCollectionJob));
+  });
+
+  app.get("/api/email-collection/status", (_request, response) => {
+    response.json(toEmailCollectionStatus(emailCollectionJob));
+  });
+
+  app.get("/api/email-collection/export.xlsx", async (_request, response) => {
+    const buffer = await exportEmailResultsToExcelBuffer(corpStore.listEmailExportRows());
+    response.setHeader(
+      "content-type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    response.setHeader("content-disposition", 'attachment; filename="nara-company-emails.xlsx"');
+    response.send(buffer);
   });
 
   app.post("/api/export", async (request, response) => {
@@ -503,6 +565,61 @@ function toProcurementCorpCollectionStatus(job: ProcurementCorpCollectionJob | u
     savedCount: job?.savedCount ?? 0,
     startedAt: job?.startedAt,
     stopRequested: job?.stopRequested ?? false
+  };
+}
+
+async function runEmailCollection(input: {
+  fetchImpl?: typeof fetch;
+  job: EmailCollectionJob;
+  store: ProcurementCorpStore;
+}): Promise<void> {
+  try {
+    while (!input.job.abortController.signal.aborted) {
+      const targets = input.store.listEmailCrawlTargets(25);
+      if (targets.length === 0) {
+        break;
+      }
+
+      for (const target of targets) {
+        if (input.job.abortController.signal.aborted) {
+          break;
+        }
+
+        const result = await crawlHomepageForEmails({
+          fetchImpl: input.fetchImpl,
+          homepageUrl: target.hmpgAdrs ?? "",
+          signal: input.job.abortController.signal
+        });
+        input.store.updateEmailResult({
+          bizno: target.bizno ?? "",
+          emails: result.emails,
+          sourceUrl: result.sourceUrls[0] ?? "",
+          status: result.status
+        });
+        input.job.processedCount += 1;
+        if (result.status === "found") {
+          input.job.foundCount += 1;
+        }
+      }
+    }
+  } catch (error) {
+    input.job.error = error instanceof Error ? error.message : String(error);
+  } finally {
+    input.job.running = false;
+    input.job.finishedAt = new Date().toISOString();
+  }
+}
+
+function toEmailCollectionStatus(job: EmailCollectionJob | undefined) {
+  return {
+    error: job?.error,
+    finishedAt: job?.finishedAt,
+    foundCount: job?.foundCount ?? 0,
+    processedCount: job?.processedCount ?? 0,
+    running: job?.running ?? false,
+    startedAt: job?.startedAt,
+    stopRequested: job?.stopRequested ?? false,
+    targetCount: job?.targetCount ?? 0
   };
 }
 

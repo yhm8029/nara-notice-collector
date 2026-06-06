@@ -220,6 +220,23 @@ select {
   background: #ffffff;
 }
 
+.inline-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid #dde2ea;
+  padding: 10px 12px;
+  color: #394150;
+  font-size: 13px;
+}
+
+.inline-summary span {
+  border: 1px solid #dde2ea;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #f8fafc;
+}
+
 .pagination {
   display: flex;
   align-items: center;
