@@ -186,16 +186,22 @@ export class ProcurementCorpStore {
     };
   }
 
-  listEmailCrawlTargets(limit = 50): RawProcurementCorp[] {
+  listEmailCrawlTargets(limit = 50, options: { retryFailed?: boolean } = {}): RawProcurementCorp[] {
     const resolvedLimit = Math.max(1, Math.floor(limit));
+    const shouldIncludeTarget = (item: RawProcurementCorp) =>
+      options.retryFailed ? item.emailStatus !== "found" && item.emailStatus !== "not_found" : !item.emailStatus?.trim();
     if (!this.db) {
       return [...this.memoryRows.values()]
         .filter((item) => Boolean(item.industryDetailSummary?.trim()))
         .filter((item) => Boolean(item.hmpgAdrs?.trim()))
-        .filter((item) => !item.emailStatus?.trim())
+        .filter(shouldIncludeTarget)
         .sort((left, right) => (left.bizno ?? "").localeCompare(right.bizno ?? ""))
         .slice(0, resolvedLimit);
     }
+
+    const statusCondition = options.retryFailed
+      ? "COALESCE(email_status, '') = 'failed'"
+      : "TRIM(COALESCE(email_status, '')) = ''";
 
     return this.db
       .prepare(
@@ -212,7 +218,7 @@ export class ProcurementCorpStore {
         FROM procurement_corps
         WHERE TRIM(industry_detail_summary) <> ''
           AND TRIM(hmpg_adrs) <> ''
-          AND TRIM(COALESCE(email_status, '')) = ''
+          AND ${statusCondition}
         ORDER BY bizno
         LIMIT ?
       `

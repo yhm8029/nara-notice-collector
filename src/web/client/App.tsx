@@ -325,12 +325,14 @@ export function App() {
     }
   }
 
-  async function startEmailCollection() {
+  async function startEmailCollection(options: { retryFailed?: boolean } = {}) {
     setLoading("email-collect");
     setError("");
     try {
       const status = await fetchJson<EmailCollectionStatus>("/api/email-collection/start", {
-        method: "POST"
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(options)
       });
       setEmailStatus(status);
       setEmailPage(1);
@@ -749,11 +751,19 @@ export function App() {
             <button
               className="primary"
               type="button"
-              onClick={startEmailCollection}
+              onClick={() => void startEmailCollection()}
               disabled={loading !== "" || emailStatus.running}
             >
               {loading === "email-collect" ? <Loader2 className="spin" size={18} /> : <Mail size={18} />}
               이메일 수집 시작
+            </button>
+            <button
+              type="button"
+              onClick={() => void startEmailCollection({ retryFailed: true })}
+              disabled={loading !== "" || emailStatus.running}
+            >
+              <Mail size={18} />
+              실패 재시도
             </button>
             <button type="button" onClick={stopEmailCollection} disabled={!emailStatus.running}>
               멈춤

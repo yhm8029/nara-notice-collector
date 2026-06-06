@@ -10,6 +10,7 @@ describe("web client", () => {
     expect(html).toContain("API 수집");
     expect(html).toContain("CSV");
     expect(html).toContain("Excel");
+    expect(html).toContain("실패 재시도");
     expect(html).toContain("나라장터 공고 검토");
     expect(html).toContain("사업자 조회");
     expect(html).toContain("이메일 수집");

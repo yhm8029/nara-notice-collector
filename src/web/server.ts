@@ -219,7 +219,8 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     );
   });
 
-  app.post("/api/email-collection/start", (_request, response) => {
+  app.post("/api/email-collection/start", (request, response) => {
+    const { retryFailed } = request.body as { retryFailed?: boolean };
     if (emailCollectionJob?.running) {
       response.status(409).json({ error: "Email collection is already running." });
       return;
@@ -233,12 +234,13 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
       running: true,
       startedAt: new Date().toISOString(),
       stopRequested: false,
-      targetCount: corpStore.listEmailCrawlTargets(100000).length
+      targetCount: corpStore.listEmailCrawlTargets(100000, { retryFailed }).length
     };
 
     void runEmailCollection({
       fetchImpl: options.fetch,
       job: emailCollectionJob,
+      retryFailed,
       store: corpStore
     });
 
@@ -571,11 +573,12 @@ function toProcurementCorpCollectionStatus(job: ProcurementCorpCollectionJob | u
 async function runEmailCollection(input: {
   fetchImpl?: typeof fetch;
   job: EmailCollectionJob;
+  retryFailed?: boolean;
   store: ProcurementCorpStore;
 }): Promise<void> {
   try {
     while (!input.job.abortController.signal.aborted) {
-      const targets = input.store.listEmailCrawlTargets(25);
+      const targets = input.store.listEmailCrawlTargets(25, { retryFailed: input.retryFailed });
       if (targets.length === 0) {
         break;
       }
