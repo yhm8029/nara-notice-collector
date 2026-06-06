@@ -34,4 +34,29 @@ describe("ProcurementCorpStore", () => {
     expect(secondPage.rows[0]?.["사업자등록번호"]).toBe("1000000020");
     expect(firstPage.rows[0]?.["업종상세"]).toBe("software business(1426, normal)");
   });
+
+  it("returns email collection candidates only when industry details exist", () => {
+    const store = new ProcurementCorpStore(":memory:");
+
+    store.upsertMany([
+      {
+        bizno: "1111111111",
+        corpNm: "industry corporation",
+        industryDetailSummary: "전기공사업(0037, 대표)",
+        hmpgAdrs: "industry.example.com"
+      },
+      {
+        bizno: "2222222222",
+        corpNm: "plain corporation",
+        industryDetailSummary: "",
+        hmpgAdrs: "plain.example.com"
+      }
+    ]);
+
+    const page = store.listRows({ page: 1, pageSize: 20, hasIndustryDetails: true });
+
+    expect(page.totalCount).toBe(1);
+    expect(page.rows[0]?.["사업자등록번호"]).toBe("1111111111");
+    expect(page.rows[0]?.["업종상세"]).toBe("전기공사업(0037, 대표)");
+  });
 });

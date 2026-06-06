@@ -155,6 +155,79 @@ describe("local web server API", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
   });
 
+  it("returns email collection candidates with industry details only", async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 2,
+              items: {
+                item: [
+                  {
+                    bizno: "1111111111",
+                    corpNm: "industry corporation",
+                    hmpgAdrs: "industry.example.com"
+                  },
+                  {
+                    bizno: "2222222222",
+                    corpNm: "plain corporation",
+                    hmpgAdrs: "plain.example.com"
+                  }
+                ]
+              }
+            }
+          }
+        })
+      )
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bizno: "1111111111",
+                    indstrytyCd: "0037",
+                    indstrytyNm: "전기공사업",
+                    rprsntIndstrytyYn: "Y"
+                  }
+                ]
+              }
+            }
+          }
+        })
+      )
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "03", resultMsg: "No Data" },
+            body: { items: [] }
+          }
+        })
+      );
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-30", apiKey: "sample-key" })
+      .expect(200);
+
+    const response = await request(app).get("/api/email-collection/candidates?page=1&pageSize=20").expect(200);
+
+    expect(response.body.totalCount).toBe(1);
+    expect(response.body.rows[0]["사업자등록번호"]).toBe("1111111111");
+    expect(response.body.rows[0]["업종상세"]).toBe("전기공사업(0037, 대표)");
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);

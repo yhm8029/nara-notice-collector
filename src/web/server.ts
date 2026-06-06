@@ -176,6 +176,16 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     );
   });
 
+  app.get("/api/email-collection/candidates", (request, response) => {
+    response.json(
+      corpStore.listRows({
+        hasIndustryDetails: true,
+        page: readQueryNumber(request.query.page, 1),
+        pageSize: readQueryNumber(request.query.pageSize, 20)
+      })
+    );
+  });
+
   app.post("/api/export", async (request, response) => {
     const format = request.query.format === "xlsx" ? "xlsx" : "csv";
     const notices = readPostedNotices(request.body);
