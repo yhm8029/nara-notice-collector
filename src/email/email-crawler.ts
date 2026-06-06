@@ -43,6 +43,18 @@ export function normalizeHomepageUrl(value: string): string {
   return parsed.href;
 }
 
+export function buildHomepageCrawlStartUrls(value: string): string[] {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    throw new Error("Homepage URL is required.");
+  }
+  if (/^https?:\/\//i.test(trimmed)) {
+    return [normalizeHomepageUrl(trimmed)];
+  }
+
+  return [normalizeHomepageUrl(`https://${trimmed}`), normalizeHomepageUrl(`http://${trimmed}`)];
+}
+
 export function extractEmailsFromHtml(html: string): string[] {
   const found = new Set<string>();
   const decodedHtml = decodeHtmlEntities(html);
@@ -67,9 +79,9 @@ export function extractEmailsFromHtml(html: string): string[] {
 export async function crawlHomepageForEmails(options: EmailCrawlOptions): Promise<EmailCrawlResult> {
   const fetchImpl = options.fetchImpl ?? fetch;
   const maxPages = Math.max(1, Math.floor(options.maxPages ?? 4));
-  let startUrl: string;
+  let startUrls: string[];
   try {
-    startUrl = normalizeHomepageUrl(options.homepageUrl);
+    startUrls = buildHomepageCrawlStartUrls(options.homepageUrl);
   } catch (error) {
     return {
       emails: [],
@@ -78,10 +90,11 @@ export async function crawlHomepageForEmails(options: EmailCrawlOptions): Promis
       status: "failed"
     };
   }
-  const queue = [startUrl];
+  const queue = [...startUrls];
   const visited = new Set<string>();
   const emails = new Set<string>();
   const sourceUrls = new Set<string>();
+  let successfulPageCount = 0;
   let lastError: string | undefined;
 
   while (queue.length > 0 && visited.size < maxPages) {
@@ -106,6 +119,7 @@ export async function crawlHomepageForEmails(options: EmailCrawlOptions): Promis
         continue;
       }
 
+      successfulPageCount += 1;
       const html = await response.text();
       const pageEmails = extractEmailsFromHtml(html);
       if (pageEmails.length > 0) {
@@ -130,7 +144,7 @@ export async function crawlHomepageForEmails(options: EmailCrawlOptions): Promis
     return { emails: [...emails].sort((left, right) => left.localeCompare(right)), sourceUrls: [...sourceUrls], status: "found" };
   }
 
-  if (visited.size === 0 || (lastError && visited.size === 1)) {
+  if (visited.size === 0 || successfulPageCount === 0) {
     return { emails: [], error: lastError, sourceUrls: [], status: "failed" };
   }
 

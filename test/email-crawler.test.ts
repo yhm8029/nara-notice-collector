@@ -37,6 +37,36 @@ describe("email crawler", () => {
     });
   });
 
+  it("falls back to http when an schemeless homepage fails over https", async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      if (String(url) === "https://vendor.example/") {
+        throw new Error("TLS failed");
+      }
+      if (String(url) === "http://vendor.example/") {
+        return htmlResponse("<p>sales@vendor.example</p>");
+      }
+      throw new Error(`unexpected URL ${String(url)}`);
+    });
+
+    const result = await crawlHomepageForEmails({
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      homepageUrl: "vendor.example",
+      requestDelayMs: 0
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "https://vendor.example/",
+      expect.objectContaining({ headers: expect.any(Object) })
+    );
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://vendor.example/",
+      expect.objectContaining({ headers: expect.any(Object) })
+    );
+    expect(result.status).toBe("found");
+    expect(result.emails).toEqual(["sales@vendor.example"]);
+    expect(result.sourceUrls).toEqual(["http://vendor.example/"]);
+  });
+
   it("returns a failed result for an invalid homepage URL without fetching", async () => {
     const fetchImpl = vi.fn();
 

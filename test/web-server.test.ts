@@ -368,6 +368,63 @@ describe("local web server API", () => {
     expect(Number(exportResponse.header["content-length"])).toBeGreaterThan(1000);
   });
 
+  it("can retry failed email collection rows", async () => {
+    let homepageAvailable = false;
+    const fetchImpl = vi.fn(async (url) => {
+      const textUrl = String(url);
+      if (textUrl.includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "normal" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: { item: [{ bizno: "1111111111", indstrytyCd: "1426", indstrytyNm: "software business" }] }
+            }
+          }
+        });
+      }
+      if (textUrl === "https://retry.example.com/") {
+        throw new Error("https failed");
+      }
+      if (textUrl === "http://retry.example.com/") {
+        if (!homepageAvailable) {
+          throw new Error("http failed");
+        }
+        return htmlResponse("<p>retry@vendor.example</p>");
+      }
+      return responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "normal" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: { item: [{ bizno: "1111111111", corpNm: "retry corporation", hmpgAdrs: "retry.example.com" }] }
+          }
+        }
+      });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl as unknown as typeof fetch });
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-30", apiKey: "sample-key" })
+      .expect(200);
+
+    await request(app).post("/api/email-collection/start").send({}).expect(200);
+    await waitForEmailCollection(app);
+    let candidates = await request(app).get("/api/email-collection/candidates?page=1&pageSize=20").expect(200);
+    expect(candidates.body.rows[0]["이메일상태"]).toBe("failed");
+
+    homepageAvailable = true;
+    await request(app).post("/api/email-collection/start").send({ retryFailed: true }).expect(200);
+    await waitForEmailCollection(app);
+
+    candidates = await request(app).get("/api/email-collection/candidates?page=1&pageSize=20").expect(200);
+    expect(candidates.body.rows[0]["이메일"]).toBe("retry@vendor.example");
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);
