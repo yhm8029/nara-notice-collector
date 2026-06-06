@@ -4,6 +4,7 @@ import {
   ExternalLink,
   FileSpreadsheet,
   Loader2,
+  Mail,
   Search,
   TableProperties
 } from "lucide-react";
@@ -82,7 +83,7 @@ type ViewerUrlPayload = {
   message?: string;
 };
 
-type ActiveView = "notices" | "corps";
+type ActiveView = "notices" | "corps" | "emails";
 
 const noticeColumns: (keyof NoticeRow)[] = [
   "No.",
@@ -125,6 +126,10 @@ export function App() {
   const [corpPage, setCorpPage] = useState(1);
   const [corpTotalCount, setCorpTotalCount] = useState(0);
   const [corpTotalPages, setCorpTotalPages] = useState(1);
+  const [emailRows, setEmailRows] = useState<ProcurementCorpRow[]>([]);
+  const [emailPage, setEmailPage] = useState(1);
+  const [emailTotalCount, setEmailTotalCount] = useState(0);
+  const [emailTotalPages, setEmailTotalPages] = useState(1);
   const [corpStatus, setCorpStatus] = useState<ProcurementCorpCollectionStatus>({
     running: false,
     savedCount: 0,
@@ -155,6 +160,14 @@ export function App() {
 
     return () => window.clearInterval(timer);
   }, [activeView, corpPage, corpStatus.running]);
+
+  useEffect(() => {
+    if (activeView !== "emails") {
+      return;
+    }
+
+    void loadEmailCandidatePage(emailPage);
+  }, [activeView, emailPage]);
 
   const summary = useMemo(() => {
     const construction = rows.filter((row) => row["구분"] === "공사").length;
@@ -256,6 +269,20 @@ export function App() {
     }
   }
 
+  async function loadEmailCandidatePage(page: number) {
+    try {
+      const payload = await fetchJson<ProcurementCorpPagePayload>(
+        `/api/email-collection/candidates?page=${page}&pageSize=20`
+      );
+      setEmailRows(payload.rows);
+      setEmailPage(payload.page);
+      setEmailTotalCount(payload.totalCount);
+      setEmailTotalPages(payload.totalPages);
+    } catch (error) {
+      setError(toErrorMessage(error));
+    }
+  }
+
   async function download(format: "csv" | "xlsx") {
     if (notices.length === 0) {
       setError("먼저 샘플 데이터 또는 API 수집 결과를 불러오세요.");
@@ -335,6 +362,14 @@ export function App() {
             <Building2 size={18} />
             사업자 조회
           </button>
+          <button
+            className={activeView === "emails" ? "active" : ""}
+            type="button"
+            onClick={() => setActiveView("emails")}
+          >
+            <Mail size={18} />
+            이메일 수집
+          </button>
         </nav>
       </aside>
 
@@ -342,6 +377,7 @@ export function App() {
         {error ? <div className="error">{error}</div> : null}
         <div hidden={activeView !== "notices"}>{renderNoticeView()}</div>
         <div hidden={activeView !== "corps"}>{renderCorpView()}</div>
+        <div hidden={activeView !== "emails"}>{renderEmailView()}</div>
       </section>
     </main>
   );
@@ -587,6 +623,92 @@ export function App() {
             type="button"
             onClick={() => void loadProcurementCorpPage(corpPage + 1)}
             disabled={corpPage >= corpTotalPages}
+          >
+            다음
+          </button>
+        </div>
+      </>
+    );
+  }
+
+  function renderEmailView() {
+    return (
+      <>
+        <header className="topbar">
+          <div>
+            <h2>이메일 수집</h2>
+            <p>업종상세가 있는 사업자만 이메일 수집 후보로 보여줍니다.</p>
+          </div>
+          <div className="topbar-actions">
+            <button type="button" onClick={() => void loadEmailCandidatePage(emailPage)}>
+              <Mail size={18} />
+              후보 새로고침
+            </button>
+          </div>
+        </header>
+
+        <section className="summary corp-summary" aria-label="이메일 수집 후보 요약">
+          <div>
+            <span>업종상세 후보</span>
+            <strong>{emailTotalCount}</strong>
+          </div>
+          <div>
+            <span>현재 페이지</span>
+            <strong>{emailPage}</strong>
+          </div>
+          <div>
+            <span>봇 상태</span>
+            <strong>대기</strong>
+          </div>
+        </section>
+
+        <section className="table-wrap" aria-label="이메일 수집 후보 목록">
+          <table className="corp-table">
+            <thead>
+              <tr>
+                {corpColumns.map((column) => (
+                  <th key={column}>{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {emailRows.length === 0 ? (
+                <tr>
+                  <td className="empty" colSpan={corpColumns.length}>
+                    업종상세가 있는 사업자가 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                emailRows.map((row) => (
+                  <tr key={`email-${row["No."]}-${row["사업자등록번호"]}`}>
+                    {corpColumns.map((column) => (
+                      <td key={column} className={column === "주소" || column === "상세주소" ? "wide" : undefined}>
+                        {column === "홈페이지주소" && row[column] ? (
+                          <a href={toExternalUrl(row[column])} target="_blank" rel="noreferrer">
+                            {row[column]}
+                          </a>
+                        ) : (
+                          row[column]
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </section>
+        <div className="pagination">
+          <button type="button" onClick={() => void loadEmailCandidatePage(emailPage - 1)} disabled={emailPage <= 1}>
+            이전
+          </button>
+          <span>
+            {emailPage} / {emailTotalPages}
+          </span>
+          <button
+            type="button"
+            onClick={() => void loadEmailCandidatePage(emailPage + 1)}
+            disabled={emailPage >= emailTotalPages}
           >
             다음
           </button>
