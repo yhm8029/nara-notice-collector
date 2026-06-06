@@ -25,6 +25,7 @@ export type ProcurementCorpDateRangeOptions = {
   numOfRows?: number;
   inqryDiv?: string;
   maxPages?: number;
+  onPage?: (progress: ProcurementCorpPageProgress) => Promise<void> | void;
   signal?: AbortSignal;
 };
 
@@ -33,16 +34,37 @@ export type ProcurementCorpAutoMonthlyOptions = {
   to: string;
   workerCount?: number;
   monthsPerWorker?: number;
+  getRangeProgress?: (range: MonthRange) =>
+    | Promise<ProcurementCorpRangeProgress | undefined>
+    | ProcurementCorpRangeProgress
+    | undefined;
   inqryDiv?: string;
   numOfRows?: number;
   flushSize?: number;
   onItems?: (items: RawProcurementCorp[]) => Promise<void> | void;
+  onRangeProgress?: (progress: ProcurementCorpRangeProgressUpdate) => Promise<void> | void;
   signal?: AbortSignal;
 };
 
 export type MonthRange = {
   from: string;
   to: string;
+};
+
+export type ProcurementCorpPageProgress = {
+  completed: boolean;
+  items: RawProcurementCorp[];
+  nextPage: number;
+  pageNo: number;
+};
+
+export type ProcurementCorpRangeProgress = {
+  completed: boolean;
+  nextPage: number;
+};
+
+export type ProcurementCorpRangeProgressUpdate = ProcurementCorpRangeProgress & {
+  range: MonthRange;
 };
 
 export type RawProcurementCorp = Record<string, unknown> & {
@@ -180,8 +202,15 @@ export class NaraProcurementCorpClient {
 
       const pageItems = extractItems(payload);
       corporations.push(...pageItems);
+      const hasNextPage = shouldLoadNextPage(payload, pageNo, numOfRows, pageItems.length);
+      await options.onPage?.({
+        completed: !hasNextPage,
+        items: pageItems,
+        nextPage: pageNo + 1,
+        pageNo
+      });
 
-      if (!shouldLoadNextPage(payload, pageNo, numOfRows, pageItems.length)) {
+      if (!hasNextPage) {
         break;
       }
     }
@@ -263,7 +292,8 @@ export class NaraProcurementCorpClient {
 
     const flushPending = async (force = false) => {
       while (pendingFlush.length >= flushSize || (force && pendingFlush.length > 0)) {
-        const chunk = pendingFlush.splice(0, force ? pendingFlush.length : flushSize);
+        const chunkSize = pendingFlush.length >= flushSize ? flushSize : pendingFlush.length;
+        const chunk = pendingFlush.splice(0, chunkSize);
         await options.onItems?.(chunk);
       }
     };
@@ -280,16 +310,32 @@ export class NaraProcurementCorpClient {
           if (options.signal?.aborted) {
             break;
           }
-          const rangeItems = await this.collectByDateRange({
+          const rangeProgress = await options.getRangeProgress?.(range);
+          if (rangeProgress?.completed) {
+            continue;
+          }
+
+          await this.collectByDateRange({
             from: range.from,
             to: range.to,
             inqryDiv: options.inqryDiv ?? "2",
             numOfRows: options.numOfRows ?? 100,
+            pageNo: rangeProgress?.nextPage ?? 1,
+            onPage: async (pageProgress) => {
+              collected.push(...pageProgress.items);
+              pendingFlush.push(...pageProgress.items);
+              await flushPending(pageProgress.completed);
+
+              if (pendingFlush.length === 0) {
+                await options.onRangeProgress?.({
+                  completed: pageProgress.completed,
+                  nextPage: pageProgress.nextPage,
+                  range
+                });
+              }
+            },
             signal: options.signal
           });
-          collected.push(...rangeItems);
-          pendingFlush.push(...rangeItems);
-          await flushPending();
         }
       }
     };

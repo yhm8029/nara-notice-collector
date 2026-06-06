@@ -11,8 +11,17 @@ export type ProcurementCorpPage = {
   rows: ProcurementCorpRow[];
 };
 
+export type ProcurementCorpCollectionProgress = {
+  completed: boolean;
+  inqryDiv: string;
+  nextPage: number;
+  rangeFrom: string;
+  rangeTo: string;
+};
+
 export class ProcurementCorpStore {
   private readonly db: SqliteDatabase | undefined;
+  private readonly memoryProgress = new Map<string, ProcurementCorpCollectionProgress>();
   private readonly memoryRows = new Map<string, RawProcurementCorp>();
 
   constructor(dbPath = resolve(process.cwd(), "output/procurement-corps.sqlite")) {
@@ -163,6 +172,85 @@ export class ProcurementCorpStore {
     };
   }
 
+  getCollectionProgress(input: {
+    inqryDiv: string;
+    rangeFrom: string;
+    rangeTo: string;
+  }): ProcurementCorpCollectionProgress | undefined {
+    if (!this.db) {
+      return this.memoryProgress.get(toProgressKey(input));
+    }
+
+    const row = this.db
+      .prepare(
+        `
+        SELECT
+          inqry_div AS inqryDiv,
+          range_from AS rangeFrom,
+          range_to AS rangeTo,
+          next_page AS nextPage,
+          completed
+        FROM procurement_corp_collection_progress
+        WHERE inqry_div = ? AND range_from = ? AND range_to = ?
+      `
+      )
+      .get(input.inqryDiv, input.rangeFrom, input.rangeTo) as
+      | {
+          completed: number;
+          inqryDiv: string;
+          nextPage: number;
+          rangeFrom: string;
+          rangeTo: string;
+        }
+      | undefined;
+
+    return row
+      ? {
+          completed: Boolean(row.completed),
+          inqryDiv: row.inqryDiv,
+          nextPage: row.nextPage,
+          rangeFrom: row.rangeFrom,
+          rangeTo: row.rangeTo
+        }
+      : undefined;
+  }
+
+  upsertCollectionProgress(progress: ProcurementCorpCollectionProgress): void {
+    const normalizedProgress = {
+      ...progress,
+      nextPage: Math.max(1, Math.floor(progress.nextPage))
+    };
+    if (!this.db) {
+      this.memoryProgress.set(toProgressKey(normalizedProgress), normalizedProgress);
+      return;
+    }
+
+    this.db
+      .prepare(
+        `
+        INSERT INTO procurement_corp_collection_progress (
+          inqry_div,
+          range_from,
+          range_to,
+          next_page,
+          completed,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(inqry_div, range_from, range_to) DO UPDATE SET
+          next_page = excluded.next_page,
+          completed = excluded.completed,
+          updated_at = CURRENT_TIMESTAMP
+      `
+      )
+      .run(
+        normalizedProgress.inqryDiv,
+        normalizedProgress.rangeFrom,
+        normalizedProgress.rangeTo,
+        normalizedProgress.nextPage,
+        normalizedProgress.completed ? 1 : 0
+      );
+  }
+
   private initializeSqlite(): void {
     if (!this.db) {
       return;
@@ -188,6 +276,17 @@ export class ProcurementCorpStore {
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_industry_detail_summary ON procurement_corps(industry_detail_summary);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_hmpg_adrs ON procurement_corps(hmpg_adrs);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_updated_at ON procurement_corps(updated_at);
+      CREATE TABLE IF NOT EXISTS procurement_corp_collection_progress (
+        inqry_div TEXT NOT NULL,
+        range_from TEXT NOT NULL,
+        range_to TEXT NOT NULL,
+        next_page INTEGER NOT NULL DEFAULT 1,
+        completed INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (inqry_div, range_from, range_to)
+      );
+      CREATE INDEX IF NOT EXISTS idx_procurement_corp_collection_progress_completed
+        ON procurement_corp_collection_progress(completed);
     `);
     this.addColumnIfMissing("procurement_corps", "industry_detail_summary", "TEXT NOT NULL DEFAULT ''");
   }
@@ -222,4 +321,8 @@ function loadSqliteDatabaseSync(): (new (path: string) => SqliteDatabase) | unde
   } catch {
     return undefined;
   }
+}
+
+function toProgressKey(input: { inqryDiv: string; rangeFrom: string; rangeTo: string }): string {
+  return `${input.inqryDiv}\u0000${input.rangeFrom}\u0000${input.rangeTo}`;
 }
