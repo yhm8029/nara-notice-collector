@@ -464,6 +464,77 @@ describe("NaraProcurementCorpClient", () => {
     expect(corporations.map((corp) => corp.bizno)).toEqual(["1111111111", "2222222222"]);
   });
 
+  it("resumes auto monthly collection from a saved page checkpoint", async () => {
+    const requestedPages: string[] = [];
+    const progressUpdates: Array<{ completed: boolean; nextPage: number; range: { from: string; to: string } }> = [];
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async (url) => {
+        const params = new URL(String(url)).searchParams;
+        requestedPages.push(params.get("pageNo") ?? "");
+        return new Response(
+          JSON.stringify({
+            response: {
+              header: { resultCode: "00", resultMsg: "normal" },
+              body: {
+                pageNo: Number(params.get("pageNo")),
+                numOfRows: 1,
+                totalCount: 3,
+                items: {
+                  item: [{ bizno: "3333333333", corpNm: "third page corporation" }]
+                }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const corporations = await client.collectAutoMonthly({
+      from: "2026-01-01",
+      to: "2026-01-31",
+      workerCount: 1,
+      monthsPerWorker: 10,
+      numOfRows: 1,
+      flushSize: 1,
+      getRangeProgress: () => ({ completed: false, nextPage: 3 }),
+      onRangeProgress: (progress) => {
+        progressUpdates.push(progress);
+      }
+    });
+
+    expect(requestedPages).toEqual(["3"]);
+    expect(corporations.map((corp) => corp.bizno)).toEqual(["3333333333"]);
+    expect(progressUpdates).toEqual([
+      {
+        completed: true,
+        nextPage: 4,
+        range: { from: "2026-01-01", to: "2026-01-31" }
+      }
+    ]);
+  });
+
+  it("skips auto monthly ranges that are already completed", async () => {
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async () => {
+        throw new Error("completed ranges should not be fetched");
+      }
+    });
+
+    const corporations = await client.collectAutoMonthly({
+      from: "2026-01-01",
+      to: "2026-01-31",
+      workerCount: 1,
+      getRangeProgress: () => ({ completed: true, nextPage: 2 })
+    });
+
+    expect(corporations).toEqual([]);
+  });
+
   it("flushes collected corporations every 50 items while auto collecting", async () => {
     const flushed: string[][] = [];
     const client = new NaraProcurementCorpClient({

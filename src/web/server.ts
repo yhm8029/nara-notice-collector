@@ -91,12 +91,21 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
 
     try {
       const client = new NaraProcurementCorpClient({ apiKey: resolvedApiKey, fetch: options.fetch });
+      const resolvedInqryDiv = inqryDiv ?? "2";
       const enrichedCorporations: Awaited<ReturnType<NaraProcurementCorpClient["enrichCorporationsWithIndustryDetails"]>> =
         [];
       const corporations = await client.collectAutoMonthly({
         from: from ?? "2000-01-01",
         to: to ?? formatToday(),
-        inqryDiv,
+        getRangeProgress: (range) =>
+          toClientRangeProgress(
+            corpStore.getCollectionProgress({
+              inqryDiv: resolvedInqryDiv,
+              rangeFrom: range.from,
+              rangeTo: range.to
+            })
+          ),
+        inqryDiv: resolvedInqryDiv,
         workerCount: workerCount ?? 2,
         monthsPerWorker: 10,
         numOfRows: 100,
@@ -105,6 +114,15 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
           const enriched = await client.enrichCorporationsWithIndustryDetails(items);
           enrichedCorporations.push(...enriched);
           corpStore.upsertMany(enriched);
+        },
+        onRangeProgress: (progress) => {
+          corpStore.upsertCollectionProgress({
+            completed: progress.completed,
+            inqryDiv: resolvedInqryDiv,
+            nextPage: progress.nextPage,
+            rangeFrom: progress.range.from,
+            rangeTo: progress.range.to
+          });
         }
       });
       const responseCorporations = enrichedCorporations.length > 0 ? enrichedCorporations : corporations;
@@ -429,11 +447,20 @@ async function runProcurementCorpCollection(input: {
 }): Promise<void> {
   try {
     const client = new NaraProcurementCorpClient({ apiKey: input.apiKey, fetch: input.fetchImpl });
+    const resolvedInqryDiv = input.inqryDiv ?? "2";
     await client.collectAutoMonthly({
       from: "2000-01-01",
       to: formatToday(),
       flushSize: 50,
-      inqryDiv: input.inqryDiv,
+      getRangeProgress: (range) =>
+        toClientRangeProgress(
+          input.store.getCollectionProgress({
+            inqryDiv: resolvedInqryDiv,
+            rangeFrom: range.from,
+            rangeTo: range.to
+          })
+        ),
+      inqryDiv: resolvedInqryDiv,
       monthsPerWorker: 10,
       numOfRows: 100,
       onItems: async (items) => {
@@ -441,6 +468,15 @@ async function runProcurementCorpCollection(input: {
           signal: input.job.abortController.signal
         });
         input.job.savedCount += input.store.upsertMany(enriched);
+      },
+      onRangeProgress: (progress) => {
+        input.store.upsertCollectionProgress({
+          completed: progress.completed,
+          inqryDiv: resolvedInqryDiv,
+          nextPage: progress.nextPage,
+          rangeFrom: progress.range.from,
+          rangeTo: progress.range.to
+        });
       },
       signal: input.job.abortController.signal,
       workerCount: input.workerCount ?? 2
@@ -451,6 +487,12 @@ async function runProcurementCorpCollection(input: {
     input.job.running = false;
     input.job.finishedAt = new Date().toISOString();
   }
+}
+
+function toClientRangeProgress(
+  progress: ReturnType<ProcurementCorpStore["getCollectionProgress"]>
+): { completed: boolean; nextPage: number } | undefined {
+  return progress ? { completed: progress.completed, nextPage: progress.nextPage } : undefined;
 }
 
 function toProcurementCorpCollectionStatus(job: ProcurementCorpCollectionJob | undefined) {

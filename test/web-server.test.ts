@@ -155,6 +155,47 @@ describe("local web server API", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
   });
 
+  it("resumes procurement corporation collection by skipping completed date ranges", async () => {
+    const requestedUrls: string[] = [];
+    const fetchImpl = vi.fn(async (url) => {
+      requestedUrls.push(String(url));
+      if (String(url).includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "03", resultMsg: "No Data" },
+            body: { items: [] }
+          }
+        });
+      }
+
+      return responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "normal" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: {
+              item: [{ bizno: "1111111111", corpNm: "checkpoint corporation" }]
+            }
+          }
+        }
+      });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl as unknown as typeof fetch });
+
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-01-01", to: "2026-01-31", apiKey: "sample-key" })
+      .expect(200);
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-01-01", to: "2026-01-31", apiKey: "sample-key" })
+      .expect(200);
+
+    expect(requestedUrls.filter((url) => url.includes("getPrcrmntCorpBasicInfo02"))).toHaveLength(1);
+  });
+
   it("returns email collection candidates with industry details and homepage only", async () => {
     const fetchImpl = vi
       .fn()

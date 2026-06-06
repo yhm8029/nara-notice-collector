@@ -65,4 +65,36 @@ describe("ProcurementCorpStore", () => {
     expect(page.rows[0]?.["사업자등록번호"]).toBe("1111111111");
     expect(page.rows[0]?.["업종상세"]).toBe("전기공사업(0037, 대표)");
   });
+
+  it("stores procurement corporation collection progress checkpoints", () => {
+    const store = new ProcurementCorpStore(":memory:");
+
+    store.upsertCollectionProgress({
+      completed: false,
+      inqryDiv: "2",
+      nextPage: 3,
+      rangeFrom: "2026-01-01",
+      rangeTo: "2026-01-31"
+    });
+
+    expect(store.getCollectionProgress({ inqryDiv: "2", rangeFrom: "2026-01-01", rangeTo: "2026-01-31" })).toEqual({
+      completed: false,
+      inqryDiv: "2",
+      nextPage: 3,
+      rangeFrom: "2026-01-01",
+      rangeTo: "2026-01-31"
+    });
+
+    store.upsertCollectionProgress({
+      completed: true,
+      inqryDiv: "2",
+      nextPage: 4,
+      rangeFrom: "2026-01-01",
+      rangeTo: "2026-01-31"
+    });
+
+    expect(
+      store.getCollectionProgress({ inqryDiv: "2", rangeFrom: "2026-01-01", rangeTo: "2026-01-31" })?.completed
+    ).toBe(true);
+  });
 });
