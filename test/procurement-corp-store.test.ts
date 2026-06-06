@@ -66,6 +66,59 @@ describe("ProcurementCorpStore", () => {
     expect(page.rows[0]?.["업종상세"]).toBe("전기공사업(0037, 대표)");
   });
 
+  it("stores email crawl results without losing them on later corporation upserts", () => {
+    const store = new ProcurementCorpStore(":memory:");
+
+    store.upsertMany([
+      {
+        bizno: "1111111111",
+        corpNm: "email corporation",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: "email.example.com"
+      }
+    ]);
+
+    store.updateEmailResult({
+      bizno: "1111111111",
+      emails: ["contact@email.example.com"],
+      sourceUrl: "https://email.example.com/contact",
+      status: "found"
+    });
+    store.upsertMany([{ bizno: "1111111111", corpNm: "email corporation", hmpgAdrs: "email.example.com" }]);
+
+    const page = store.listRows({ hasHomepage: true, hasIndustryDetails: true });
+
+    expect(page.rows[0]?.["이메일"]).toBe("contact@email.example.com");
+    expect(page.rows[0]?.["이메일상태"]).toBe("found");
+    expect(page.rows[0]?.["이메일출처"]).toBe("https://email.example.com/contact");
+  });
+
+  it("returns pending email crawl targets before already found rows", () => {
+    const store = new ProcurementCorpStore(":memory:");
+    store.upsertMany([
+      {
+        bizno: "1111111111",
+        corpNm: "pending corporation",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: "pending.example.com"
+      },
+      {
+        bizno: "2222222222",
+        corpNm: "found corporation",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: "found.example.com"
+      }
+    ]);
+    store.updateEmailResult({
+      bizno: "2222222222",
+      emails: ["hello@found.example.com"],
+      sourceUrl: "https://found.example.com",
+      status: "found"
+    });
+
+    expect(store.listEmailCrawlTargets(10).map((item) => item.bizno)).toEqual(["1111111111"]);
+  });
+
   it("stores procurement corporation collection progress checkpoints", () => {
     const store = new ProcurementCorpStore(":memory:");
 

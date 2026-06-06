@@ -35,8 +35,10 @@ type ProcurementCorpRow = {
   "전화번호": string;
   "팩스번호": string;
   "홈페이지주소": string;
+  "이메일"?: string;
+  "이메일상태"?: string;
+  "이메일출처"?: string;
 };
-
 type NormalizedNotice = {
   noticeId: string;
   title: string;
@@ -77,6 +79,17 @@ type ProcurementCorpCollectionStatus = {
   stopRequested: boolean;
 };
 
+type EmailCollectionStatus = {
+  error?: string;
+  finishedAt?: string;
+  foundCount: number;
+  processedCount: number;
+  running: boolean;
+  startedAt?: string;
+  stopRequested: boolean;
+  targetCount: number;
+};
+
 type ViewerUrlPayload = {
   mode: "synap" | "source";
   viewerUrl: string;
@@ -114,6 +127,16 @@ const corpColumns: (keyof ProcurementCorpRow)[] = [
   "홈페이지주소"
 ];
 
+const emailColumns: (keyof ProcurementCorpRow)[] = [
+  "No.",
+  "사업자등록번호",
+  "업체명",
+  "업종상세",
+  "홈페이지주소",
+  "이메일",
+  "이메일상태",
+  "이메일출처"
+];
 export function App() {
   const [activeView, setActiveView] = useState<ActiveView>("notices");
   const [rows, setRows] = useState<NoticeRow[]>([]);
@@ -134,6 +157,13 @@ export function App() {
     running: false,
     savedCount: 0,
     stopRequested: false
+  });
+  const [emailStatus, setEmailStatus] = useState<EmailCollectionStatus>({
+    foundCount: 0,
+    processedCount: 0,
+    running: false,
+    stopRequested: false,
+    targetCount: 0
   });
   const [corpApiKey, setCorpApiKey] = useState("");
   const [corpInqryDiv, setCorpInqryDiv] = useState("2");
@@ -166,8 +196,20 @@ export function App() {
       return;
     }
 
+    void refreshEmailCollectionStatus();
     void loadEmailCandidatePage(emailPage);
-  }, [activeView, emailPage]);
+
+    if (!emailStatus.running) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      void refreshEmailCollectionStatus();
+      void loadEmailCandidatePage(emailPage);
+    }, 2000);
+
+    return () => window.clearInterval(timer);
+  }, [activeView, emailPage, emailStatus.running]);
 
   const summary = useMemo(() => {
     const construction = rows.filter((row) => row["구분"] === "공사").length;
@@ -280,6 +322,70 @@ export function App() {
       setEmailTotalPages(payload.totalPages);
     } catch (error) {
       setError(toErrorMessage(error));
+    }
+  }
+
+  async function startEmailCollection() {
+    setLoading("email-collect");
+    setError("");
+    try {
+      const status = await fetchJson<EmailCollectionStatus>("/api/email-collection/start", {
+        method: "POST"
+      });
+      setEmailStatus(status);
+      setEmailPage(1);
+      await loadEmailCandidatePage(1);
+    } catch (error) {
+      setError(toErrorMessage(error));
+    } finally {
+      setLoading("");
+    }
+  }
+
+  async function stopEmailCollection() {
+    setError("");
+    try {
+      setEmailStatus(
+        await fetchJson<EmailCollectionStatus>("/api/email-collection/stop", {
+          method: "POST"
+        })
+      );
+    } catch (error) {
+      setError(toErrorMessage(error));
+    }
+  }
+
+  async function refreshEmailCollectionStatus() {
+    try {
+      const status = await fetchJson<EmailCollectionStatus>("/api/email-collection/status");
+      setEmailStatus(status);
+      if (status.error) {
+        setError(status.error);
+      }
+    } catch (error) {
+      setError(toErrorMessage(error));
+    }
+  }
+
+  async function downloadEmailExcel() {
+    setLoading("email-xlsx");
+    setError("");
+    try {
+      const response = await fetch("/api/email-collection/export.xlsx");
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "nara-company-emails.xlsx";
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setError(toErrorMessage(error));
+    } finally {
+      setLoading("");
     }
   }
 
@@ -640,6 +746,22 @@ export function App() {
             <p>업종상세와 홈페이지주소가 있는 사업자만 이메일 수집 후보로 보여줍니다.</p>
           </div>
           <div className="topbar-actions">
+            <button
+              className="primary"
+              type="button"
+              onClick={startEmailCollection}
+              disabled={loading !== "" || emailStatus.running}
+            >
+              {loading === "email-collect" ? <Loader2 className="spin" size={18} /> : <Mail size={18} />}
+              이메일 수집 시작
+            </button>
+            <button type="button" onClick={stopEmailCollection} disabled={!emailStatus.running}>
+              멈춤
+            </button>
+            <button type="button" onClick={downloadEmailExcel} disabled={loading !== ""}>
+              <FileSpreadsheet size={18} />
+              엑셀 다운로드
+            </button>
             <button type="button" onClick={() => void loadEmailCandidatePage(emailPage)}>
               <Mail size={18} />
               후보 새로고침
@@ -663,10 +785,16 @@ export function App() {
         </section>
 
         <section className="table-wrap" aria-label="이메일 수집 후보 목록">
+          <div className="inline-summary" aria-label="이메일 수집 진행 요약">
+            <span>대상 {emailStatus.targetCount}</span>
+            <span>처리 {emailStatus.processedCount}</span>
+            <span>발견 {emailStatus.foundCount}</span>
+            <span>{emailStatus.running ? "수집중" : emailStatus.stopRequested ? "중지됨" : "대기"}</span>
+          </div>
           <table className="corp-table">
             <thead>
               <tr>
-                {corpColumns.map((column) => (
+                {emailColumns.map((column) => (
                   <th key={column}>{column}</th>
                 ))}
               </tr>
@@ -674,14 +802,14 @@ export function App() {
             <tbody>
               {emailRows.length === 0 ? (
                 <tr>
-                  <td className="empty" colSpan={corpColumns.length}>
+                  <td className="empty" colSpan={emailColumns.length}>
                     업종상세와 홈페이지주소가 있는 사업자가 없습니다.
                   </td>
                 </tr>
               ) : (
                 emailRows.map((row) => (
                   <tr key={`email-${row["No."]}-${row["사업자등록번호"]}`}>
-                    {corpColumns.map((column) => (
+                    {emailColumns.map((column) => (
                       <td key={column} className={column === "주소" || column === "상세주소" ? "wide" : undefined}>
                         {column === "홈페이지주소" && row[column] ? (
                           <a href={toExternalUrl(row[column])} target="_blank" rel="noreferrer">

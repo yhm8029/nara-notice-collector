@@ -19,6 +19,13 @@ export type ProcurementCorpCollectionProgress = {
   rangeTo: string;
 };
 
+export type ProcurementCorpEmailResult = {
+  bizno: string;
+  emails: string[];
+  sourceUrl: string;
+  status: string;
+};
+
 export class ProcurementCorpStore {
   private readonly db: SqliteDatabase | undefined;
   private readonly memoryProgress = new Map<string, ProcurementCorpCollectionProgress>();
@@ -40,7 +47,7 @@ export class ProcurementCorpStore {
         if (!item.bizno) {
           continue;
         }
-        this.memoryRows.set(item.bizno, item);
+        this.memoryRows.set(item.bizno, { ...this.memoryRows.get(item.bizno), ...item });
         count += 1;
       }
       return count;
@@ -68,7 +75,10 @@ export class ProcurementCorpStore {
         dtl_adrs = excluded.dtl_adrs,
         rgn_nm = excluded.rgn_nm,
         corp_bsns_div_nm = excluded.corp_bsns_div_nm,
-        industry_detail_summary = excluded.industry_detail_summary,
+        industry_detail_summary = CASE
+          WHEN excluded.industry_detail_summary <> '' THEN excluded.industry_detail_summary
+          ELSE procurement_corps.industry_detail_summary
+        END,
         tel_no = excluded.tel_no,
         fax_no = excluded.fax_no,
         hmpg_adrs = excluded.hmpg_adrs,
@@ -151,7 +161,11 @@ export class ProcurementCorpStore {
           industry_detail_summary AS industryDetailSummary,
           tel_no AS telNo,
           fax_no AS faxNo,
-          hmpg_adrs AS hmpgAdrs
+          hmpg_adrs AS hmpgAdrs,
+          email_addresses AS emailAddresses,
+          email_source_url AS emailSourceUrl,
+          email_status AS emailStatus,
+          email_checked_at AS emailCheckedAt
         FROM procurement_corps
         ${whereClause}
         ORDER BY bizno
@@ -170,6 +184,99 @@ export class ProcurementCorpStore {
         "No.": offset + index + 1
       }))
     };
+  }
+
+  listEmailCrawlTargets(limit = 50): RawProcurementCorp[] {
+    const resolvedLimit = Math.max(1, Math.floor(limit));
+    if (!this.db) {
+      return [...this.memoryRows.values()]
+        .filter((item) => Boolean(item.industryDetailSummary?.trim()))
+        .filter((item) => Boolean(item.hmpgAdrs?.trim()))
+        .filter((item) => !item.emailStatus?.trim())
+        .sort((left, right) => (left.bizno ?? "").localeCompare(right.bizno ?? ""))
+        .slice(0, resolvedLimit);
+    }
+
+    return this.db
+      .prepare(
+        `
+        SELECT
+          bizno,
+          corp_nm AS corpNm,
+          industry_detail_summary AS industryDetailSummary,
+          hmpg_adrs AS hmpgAdrs,
+          email_addresses AS emailAddresses,
+          email_source_url AS emailSourceUrl,
+          email_status AS emailStatus,
+          email_checked_at AS emailCheckedAt
+        FROM procurement_corps
+        WHERE TRIM(industry_detail_summary) <> ''
+          AND TRIM(hmpg_adrs) <> ''
+          AND TRIM(COALESCE(email_status, '')) = ''
+        ORDER BY bizno
+        LIMIT ?
+      `
+      )
+      .all(resolvedLimit) as RawProcurementCorp[];
+  }
+
+  listEmailExportRows(): RawProcurementCorp[] {
+    if (!this.db) {
+      return [...this.memoryRows.values()]
+        .filter((item) => Boolean(item.emailAddresses?.trim()))
+        .sort((left, right) => (left.corpNm ?? "").localeCompare(right.corpNm ?? ""));
+    }
+
+    return this.db
+      .prepare(
+        `
+        SELECT
+          bizno,
+          corp_nm AS corpNm,
+          hmpg_adrs AS hmpgAdrs,
+          email_addresses AS emailAddresses,
+          email_source_url AS emailSourceUrl,
+          email_status AS emailStatus,
+          email_checked_at AS emailCheckedAt
+        FROM procurement_corps
+        WHERE TRIM(email_addresses) <> ''
+        ORDER BY corp_nm, bizno
+      `
+      )
+      .all() as RawProcurementCorp[];
+  }
+
+  updateEmailResult(result: ProcurementCorpEmailResult): void {
+    const emailAddresses = result.emails.join(", ");
+    const checkedAt = new Date().toISOString();
+    if (!this.db) {
+      const current = this.memoryRows.get(result.bizno);
+      if (!current) {
+        return;
+      }
+      this.memoryRows.set(result.bizno, {
+        ...current,
+        emailAddresses,
+        emailCheckedAt: checkedAt,
+        emailSourceUrl: result.sourceUrl,
+        emailStatus: result.status
+      });
+      return;
+    }
+
+    this.db
+      .prepare(
+        `
+        UPDATE procurement_corps
+        SET
+          email_addresses = ?,
+          email_source_url = ?,
+          email_status = ?,
+          email_checked_at = ?
+        WHERE bizno = ?
+      `
+      )
+      .run(emailAddresses, result.sourceUrl, result.status, checkedAt, result.bizno);
   }
 
   getCollectionProgress(input: {
@@ -269,6 +376,10 @@ export class ProcurementCorpStore {
         tel_no TEXT NOT NULL DEFAULT '',
         fax_no TEXT NOT NULL DEFAULT '',
         hmpg_adrs TEXT NOT NULL DEFAULT '',
+        email_addresses TEXT NOT NULL DEFAULT '',
+        email_source_url TEXT NOT NULL DEFAULT '',
+        email_status TEXT NOT NULL DEFAULT '',
+        email_checked_at TEXT NOT NULL DEFAULT '',
         updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_corp_nm ON procurement_corps(corp_nm);
@@ -289,6 +400,10 @@ export class ProcurementCorpStore {
         ON procurement_corp_collection_progress(completed);
     `);
     this.addColumnIfMissing("procurement_corps", "industry_detail_summary", "TEXT NOT NULL DEFAULT ''");
+    this.addColumnIfMissing("procurement_corps", "email_addresses", "TEXT NOT NULL DEFAULT ''");
+    this.addColumnIfMissing("procurement_corps", "email_source_url", "TEXT NOT NULL DEFAULT ''");
+    this.addColumnIfMissing("procurement_corps", "email_status", "TEXT NOT NULL DEFAULT ''");
+    this.addColumnIfMissing("procurement_corps", "email_checked_at", "TEXT NOT NULL DEFAULT ''");
   }
 
   private addColumnIfMissing(tableName: string, columnName: string, definition: string): void {
