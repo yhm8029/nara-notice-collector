@@ -36,6 +36,21 @@ describe("email crawler", () => {
       status: "found"
     });
   });
+
+  it("returns a failed result for an invalid homepage URL without fetching", async () => {
+    const fetchImpl = vi.fn();
+
+    const result = await crawlHomepageForEmails({
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+      homepageUrl: "https://",
+      requestDelayMs: 0
+    });
+
+    expect(fetchImpl).not.toHaveBeenCalled();
+    expect(result.status).toBe("failed");
+    expect(result.emails).toEqual([]);
+    expect(result.error).toContain("Invalid URL");
+  });
 });
 
 function htmlResponse(html: string) {
