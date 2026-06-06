@@ -637,7 +637,7 @@ export function App() {
         <header className="topbar">
           <div>
             <h2>이메일 수집</h2>
-            <p>업종상세가 있는 사업자만 이메일 수집 후보로 보여줍니다.</p>
+            <p>업종상세와 홈페이지주소가 있는 사업자만 이메일 수집 후보로 보여줍니다.</p>
           </div>
           <div className="topbar-actions">
             <button type="button" onClick={() => void loadEmailCandidatePage(emailPage)}>
@@ -649,7 +649,7 @@ export function App() {
 
         <section className="summary corp-summary" aria-label="이메일 수집 후보 요약">
           <div>
-            <span>업종상세 후보</span>
+            <span>이메일 후보</span>
             <strong>{emailTotalCount}</strong>
           </div>
           <div>
@@ -675,7 +675,7 @@ export function App() {
               {emailRows.length === 0 ? (
                 <tr>
                   <td className="empty" colSpan={corpColumns.length}>
-                    업종상세가 있는 사업자가 없습니다.
+                    업종상세와 홈페이지주소가 있는 사업자가 없습니다.
                   </td>
                 </tr>
               ) : (

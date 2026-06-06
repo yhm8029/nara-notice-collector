@@ -179,6 +179,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
   app.get("/api/email-collection/candidates", (request, response) => {
     response.json(
       corpStore.listRows({
+        hasHomepage: true,
         hasIndustryDetails: true,
         page: readQueryNumber(request.query.page, 1),
         pageSize: readQueryNumber(request.query.pageSize, 20)

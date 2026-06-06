@@ -155,7 +155,7 @@ describe("local web server API", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
   });
 
-  it("returns email collection candidates with industry details only", async () => {
+  it("returns email collection candidates with industry details and homepage only", async () => {
     const fetchImpl = vi
       .fn()
       .mockResolvedValueOnce(
@@ -165,7 +165,7 @@ describe("local web server API", () => {
             body: {
               pageNo: 1,
               numOfRows: 100,
-              totalCount: 2,
+              totalCount: 3,
               items: {
                 item: [
                   {
@@ -177,6 +177,11 @@ describe("local web server API", () => {
                     bizno: "2222222222",
                     corpNm: "plain corporation",
                     hmpgAdrs: "plain.example.com"
+                  },
+                  {
+                    bizno: "3333333333",
+                    corpNm: "industry without homepage",
+                    hmpgAdrs: ""
                   }
                 ]
               }
@@ -211,6 +216,27 @@ describe("local web server API", () => {
           response: {
             header: { resultCode: "03", resultMsg: "No Data" },
             body: { items: [] }
+          }
+        })
+      )
+      .mockResolvedValueOnce(
+        responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bizno: "3333333333",
+                    indstrytyCd: "1426",
+                    indstrytyNm: "software business"
+                  }
+                ]
+              }
+            }
           }
         })
       );

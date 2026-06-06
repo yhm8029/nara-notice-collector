@@ -16,7 +16,7 @@ describe("web client", () => {
     expect(html).toContain("사업자등록번호");
     expect(html).toContain("홈페이지주소");
     expect(html).toContain("업종상세");
-    expect(html).toContain("업종상세가 있는 사업자");
+    expect(html).toContain("업종상세와 홈페이지주소가 있는 사업자");
     expect(html).toContain("워커 수");
     expect(html).toContain("최대 5개");
     expect(html).toContain("공고문");

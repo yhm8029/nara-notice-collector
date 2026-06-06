@@ -95,13 +95,16 @@ export class ProcurementCorpStore {
     }
   }
 
-  listRows(options: { hasIndustryDetails?: boolean; page?: number; pageSize?: number } = {}): ProcurementCorpPage {
+  listRows(
+    options: { hasHomepage?: boolean; hasIndustryDetails?: boolean; page?: number; pageSize?: number } = {}
+  ): ProcurementCorpPage {
     const pageSize = Math.max(1, Math.floor(options.pageSize ?? 20));
     const page = Math.max(1, Math.floor(options.page ?? 1));
     const offset = (page - 1) * pageSize;
     if (!this.db) {
       const corporations = [...this.memoryRows.values()]
         .filter((item) => !options.hasIndustryDetails || Boolean(item.industryDetailSummary?.trim()))
+        .filter((item) => !options.hasHomepage || Boolean(item.hmpgAdrs?.trim()))
         .sort((left, right) => (left.bizno ?? "").localeCompare(right.bizno ?? ""));
       const totalCount = corporations.length;
       return {
@@ -116,7 +119,11 @@ export class ProcurementCorpStore {
       };
     }
 
-    const whereClause = options.hasIndustryDetails ? "WHERE TRIM(industry_detail_summary) <> ''" : "";
+    const whereConditions = [
+      options.hasIndustryDetails ? "TRIM(industry_detail_summary) <> ''" : undefined,
+      options.hasHomepage ? "TRIM(hmpg_adrs) <> ''" : undefined
+    ].filter((condition): condition is string => Boolean(condition));
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
     const totalCount = Number(
       (this.db.prepare(`SELECT COUNT(*) AS count FROM procurement_corps ${whereClause}`).get() as { count: number })
         .count
@@ -179,6 +186,7 @@ export class ProcurementCorpStore {
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_corp_nm ON procurement_corps(corp_nm);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_rgn_nm ON procurement_corps(rgn_nm);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_industry_detail_summary ON procurement_corps(industry_detail_summary);
+      CREATE INDEX IF NOT EXISTS idx_procurement_corps_hmpg_adrs ON procurement_corps(hmpg_adrs);
       CREATE INDEX IF NOT EXISTS idx_procurement_corps_updated_at ON procurement_corps(updated_at);
     `);
     this.addColumnIfMissing("procurement_corps", "industry_detail_summary", "TEXT NOT NULL DEFAULT ''");
