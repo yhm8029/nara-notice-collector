@@ -297,6 +297,30 @@ describe("NaraProcurementCorpClient", () => {
     expect(url.searchParams.get("bizno")).toBe("1111111111");
   });
 
+  it("skips industry detail lookup for non-standard business numbers", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        throw new Error("invalid business numbers should not be requested");
+      }
+    });
+
+    await expect(client.collectIndustryDetailsByBusinessNumber("000000742")).resolves.toEqual([]);
+
+    const [corporation] = await client.enrichCorporationsWithIndustryDetails([
+      {
+        bizno: "000000742",
+        corpNm: "foreign corporation"
+      }
+    ]);
+
+    expect(corporation?.industryDetailSummary).toBe("");
+    expect(requestedUrls).toEqual([]);
+  });
+
   it("collects industry details across all reported pages", async () => {
     const requestedUrls: string[] = [];
     const client = new NaraProcurementCorpClient({

@@ -222,6 +222,10 @@ export class NaraProcurementCorpClient {
     businessNumber: string,
     options: ProcurementCorpSearchOptions = {}
   ): Promise<RawProcurementCorpIndustry[]> {
+    if (!isStandardBusinessNumber(businessNumber)) {
+      return [];
+    }
+
     const numOfRows = options.numOfRows ?? 100;
     const industries: RawProcurementCorpIndustry[] = [];
 
@@ -591,6 +595,10 @@ function readResponseBody(payload: unknown): Record<string, unknown> | undefined
 
 function normalizeBusinessNumber(value: string): string {
   return value.replace(/\D/g, "");
+}
+
+function isStandardBusinessNumber(value: string): boolean {
+  return normalizeBusinessNumber(value).length === 10;
 }
 
 function dedupeByBusinessNumber(corporations: RawProcurementCorp[]): RawProcurementCorp[] {
