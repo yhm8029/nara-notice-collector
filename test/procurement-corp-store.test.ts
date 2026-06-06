@@ -35,7 +35,7 @@ describe("ProcurementCorpStore", () => {
     expect(firstPage.rows[0]?.["업종상세"]).toBe("software business(1426, normal)");
   });
 
-  it("returns email collection candidates only when industry details exist", () => {
+  it("returns email collection candidates only when industry details and homepage exist", () => {
     const store = new ProcurementCorpStore(":memory:");
 
     store.upsertMany([
@@ -50,10 +50,16 @@ describe("ProcurementCorpStore", () => {
         corpNm: "plain corporation",
         industryDetailSummary: "",
         hmpgAdrs: "plain.example.com"
+      },
+      {
+        bizno: "3333333333",
+        corpNm: "industry without homepage",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: ""
       }
     ]);
 
-    const page = store.listRows({ page: 1, pageSize: 20, hasIndustryDetails: true });
+    const page = store.listRows({ page: 1, pageSize: 20, hasHomepage: true, hasIndustryDetails: true });
 
     expect(page.totalCount).toBe(1);
     expect(page.rows[0]?.["사업자등록번호"]).toBe("1111111111");
