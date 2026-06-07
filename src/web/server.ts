@@ -576,9 +576,15 @@ async function runEmailCollection(input: {
   retryFailed?: boolean;
   store: ProcurementCorpStore;
 }): Promise<void> {
+  const attemptedBusinessNumbers = new Set<string>();
   try {
     while (!input.job.abortController.signal.aborted) {
-      const targets = input.store.listEmailCrawlTargets(25, { retryFailed: input.retryFailed });
+      const targets = input.store
+        .listEmailCrawlTargets(25, { retryFailed: input.retryFailed })
+        .filter((target) => {
+          const bizno = target.bizno ?? "";
+          return bizno && !attemptedBusinessNumbers.has(bizno);
+        });
       if (targets.length === 0) {
         break;
       }
@@ -588,13 +594,15 @@ async function runEmailCollection(input: {
           break;
         }
 
+        const bizno = target.bizno ?? "";
+        attemptedBusinessNumbers.add(bizno);
         const result = await crawlHomepageForEmails({
           fetchImpl: input.fetchImpl,
           homepageUrl: target.hmpgAdrs ?? "",
           signal: input.job.abortController.signal
         });
         input.store.updateEmailResult({
-          bizno: target.bizno ?? "",
+          bizno,
           emails: result.emails,
           sourceUrl: result.sourceUrls[0] ?? "",
           status: result.status

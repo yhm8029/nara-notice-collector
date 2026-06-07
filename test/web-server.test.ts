@@ -425,6 +425,56 @@ describe("local web server API", () => {
     expect(candidates.body.rows[0]["이메일"]).toBe("retry@vendor.example");
   });
 
+  it("stops a failed retry run after each failed row has been attempted once", async () => {
+    const fetchImpl = vi.fn(async (url) => {
+      const textUrl = String(url);
+      if (textUrl.includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "normal" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: { item: [{ bizno: "1111111111", indstrytyCd: "1426", indstrytyNm: "software business" }] }
+            }
+          }
+        });
+      }
+      if (textUrl === "https://always-fails.example/") {
+        throw new Error("https failed");
+      }
+      if (textUrl === "http://always-fails.example/") {
+        throw new Error("http failed");
+      }
+      return responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "normal" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: { item: [{ bizno: "1111111111", corpNm: "failed retry corporation", hmpgAdrs: "always-fails.example" }] }
+          }
+        }
+      });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl as unknown as typeof fetch });
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-30", apiKey: "sample-key" })
+      .expect(200);
+    await request(app).post("/api/email-collection/start").send({}).expect(200);
+    await waitForEmailCollection(app);
+
+    await request(app).post("/api/email-collection/start").send({ retryFailed: true }).expect(200);
+    await waitForEmailCollection(app);
+
+    const status = await request(app).get("/api/email-collection/status").expect(200);
+    expect(status.body.running).toBe(false);
+    expect(status.body.processedCount).toBe(1);
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);
