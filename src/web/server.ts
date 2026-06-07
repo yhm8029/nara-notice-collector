@@ -580,7 +580,10 @@ async function runEmailCollection(input: {
   try {
     while (!input.job.abortController.signal.aborted) {
       const targets = input.store
-        .listEmailCrawlTargets(25, { retryFailed: input.retryFailed })
+        .listEmailCrawlTargets(25, {
+          excludedBusinessNumbers: attemptedBusinessNumbers,
+          retryFailed: input.retryFailed
+        })
         .filter((target) => {
           const bizno = target.bizno ?? "";
           return bizno && !attemptedBusinessNumbers.has(bizno);
