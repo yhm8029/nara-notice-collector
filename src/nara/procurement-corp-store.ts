@@ -186,10 +186,14 @@ export class ProcurementCorpStore {
     };
   }
 
-  listEmailCrawlTargets(limit = 50, options: { retryFailed?: boolean } = {}): RawProcurementCorp[] {
+  listEmailCrawlTargets(
+    limit = 50,
+    options: { excludedBusinessNumbers?: Set<string>; retryFailed?: boolean } = {}
+  ): RawProcurementCorp[] {
     const resolvedLimit = Math.max(1, Math.floor(limit));
     const shouldIncludeTarget = (item: RawProcurementCorp) =>
-      options.retryFailed ? item.emailStatus !== "found" && item.emailStatus !== "not_found" : !item.emailStatus?.trim();
+      !options.excludedBusinessNumbers?.has(item.bizno ?? "") &&
+      (options.retryFailed ? item.emailStatus !== "found" && item.emailStatus !== "not_found" : !item.emailStatus?.trim());
     if (!this.db) {
       return [...this.memoryRows.values()]
         .filter((item) => Boolean(item.industryDetailSummary?.trim()))
@@ -202,6 +206,11 @@ export class ProcurementCorpStore {
     const statusCondition = options.retryFailed
       ? "COALESCE(email_status, '') = 'failed'"
       : "TRIM(COALESCE(email_status, '')) = ''";
+    const excludedBusinessNumbers = [...(options.excludedBusinessNumbers ?? new Set<string>())];
+    const excludedCondition =
+      excludedBusinessNumbers.length > 0
+        ? `AND bizno NOT IN (${excludedBusinessNumbers.map(() => "?").join(", ")})`
+        : "";
 
     return this.db
       .prepare(
@@ -219,11 +228,12 @@ export class ProcurementCorpStore {
         WHERE TRIM(industry_detail_summary) <> ''
           AND TRIM(hmpg_adrs) <> ''
           AND ${statusCondition}
+          ${excludedCondition}
         ORDER BY bizno
         LIMIT ?
       `
       )
-      .all(resolvedLimit) as RawProcurementCorp[];
+      .all(...excludedBusinessNumbers, resolvedLimit) as RawProcurementCorp[];
   }
 
   listEmailExportRows(): RawProcurementCorp[] {

@@ -151,6 +151,36 @@ describe("ProcurementCorpStore", () => {
     expect(store.listEmailCrawlTargets(10, { retryFailed: true }).map((item) => item.bizno)).toEqual(["1111111111"]);
   });
 
+  it("can skip already attempted email crawl targets in retry runs", () => {
+    const store = new ProcurementCorpStore(":memory:");
+    store.upsertMany([
+      {
+        bizno: "1111111111",
+        corpNm: "first failed corporation",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: "first.example.com"
+      },
+      {
+        bizno: "2222222222",
+        corpNm: "second failed corporation",
+        industryDetailSummary: "software business(1426, normal)",
+        hmpgAdrs: "second.example.com"
+      }
+    ]);
+    for (const bizno of ["1111111111", "2222222222"]) {
+      store.updateEmailResult({ bizno, emails: [], sourceUrl: "", status: "failed" });
+    }
+
+    expect(
+      store
+        .listEmailCrawlTargets(10, {
+          excludedBusinessNumbers: new Set(["1111111111"]),
+          retryFailed: true
+        })
+        .map((item) => item.bizno)
+    ).toEqual(["2222222222"]);
+  });
+
   it("stores procurement corporation collection progress checkpoints", () => {
     const store = new ProcurementCorpStore(":memory:");
 
