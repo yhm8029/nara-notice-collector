@@ -25,7 +25,12 @@ describe("sample notice data", () => {
       noticeId: "20260500001",
       title: "OO초등학교 그린스마트스쿨 개축공사",
       noticeType: "construction",
-      agency: "OO교육지원청"
+      agency: "OO교육지원청",
+      winner: {
+        companyName: "낙찰건설",
+        businessNumber: "1111111111",
+        phoneNumber: "02-1111-1111"
+      }
     };
 
     const row: NoticeExportRow = {
@@ -37,6 +42,8 @@ describe("sample notice data", () => {
       "예산": "",
       "마감일": "",
       "업종제한": "",
+      "낙찰자": "낙찰건설",
+      "낙찰자 연락처": "02-1111-1111",
       "원문링크": ""
     };
 
@@ -49,6 +56,8 @@ describe("sample notice data", () => {
       "예산": "",
       "마감일": "",
       "업종제한": "",
+      "낙찰자": "낙찰건설",
+      "낙찰자 연락처": "02-1111-1111",
       "원문링크": ""
     });
   });
@@ -131,6 +140,23 @@ describe("notice normalizer", () => {
     expect(notice.deadline).toBeUndefined();
     expect(notice.region).toBeUndefined();
     expect(notice.industryRestriction).toBeUndefined();
+  });
+
+  it("normalizes winner company, business number, and phone fields when present", () => {
+    const notice = normalizeNotice({
+      bidNtceNo: "20260500007",
+      bidNtceNm: "행정복지센터 시설 보수",
+      ntceInsttNm: "OO시청",
+      sucsfbidCorpNm: " 낙찰건설 ",
+      sucsfbidCorpBizno: " 111-11-11111 ",
+      sucsfbidCorpTelNo: " 02-1111-1111 "
+    });
+
+    expect(notice.winner).toEqual({
+      companyName: "낙찰건설",
+      businessNumber: "1111111111",
+      phoneNumber: "02-1111-1111"
+    });
   });
 
   it("uses the first notice document attachment when the standard notice URL is missing", () => {

@@ -10,6 +10,8 @@ export const EXPORT_COLUMNS = [
   "예산",
   "마감일",
   "업종제한",
+  "낙찰자",
+  "낙찰자 연락처",
   "원문링크"
 ] as const satisfies readonly (keyof NoticeExportRow)[];
 
@@ -25,6 +27,8 @@ export function buildNoticeExportRows(notices: NormalizedNotice[]): NoticeExport
       "예산": formatBudget(notice.budget),
       "마감일": notice.deadline ?? "",
       "업종제한": notice.industryRestriction ?? "",
+      "낙찰자": notice.winner?.companyName ?? "",
+      "낙찰자 연락처": notice.winner?.phoneNumber ?? "",
       "원문링크": notice.sourceUrl ?? ""
     }));
 }

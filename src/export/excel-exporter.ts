@@ -4,7 +4,7 @@ import type { Blob } from "node:buffer";
 import { buildNoticeExportRows, EXPORT_COLUMNS } from "./csv-exporter.js";
 import type { NormalizedNotice, NoticeExportRow } from "../nara/types.js";
 
-const COLUMN_WIDTHS = [12, 16, 42, 12, 24, 16, 22, 34, 42];
+const COLUMN_WIDTHS = [12, 16, 42, 12, 24, 16, 22, 34, 24, 18, 42];
 type ExcelFileContent = Stream | Buffer | Blob;
 
 export async function exportNoticesToExcel(notices: NormalizedNotice[], outputPath: string): Promise<void> {
@@ -65,7 +65,7 @@ function createAutoFilterFeature(rowCount: number): Feature<ExcelFileContent> {
               return content;
             }
 
-            const autoFilter = `<autoFilter ref="A1:I${rowCount}"/>`;
+            const autoFilter = `<autoFilter ref="A1:K${rowCount}"/>`;
             return content.replace("</sheetData>", `</sheetData>${autoFilter}`);
           }
         }

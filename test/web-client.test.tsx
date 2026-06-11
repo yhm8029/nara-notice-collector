@@ -18,6 +18,8 @@ describe("web client", () => {
     expect(html).toContain("워커 수");
     expect(html).toContain("최대 5개");
     expect(html).toContain("공고문");
+    expect(html).toContain("낙찰자");
+    expect(html).toContain("낙찰자 연락처");
     expect(html).toContain("행정복지센터");
     expect(html).not.toContain("자동제어");
     expect(html).not.toContain("임박");

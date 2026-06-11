@@ -22,6 +22,8 @@ describe("CSV exporter", () => {
       "예산": "1,000",
       "마감일": "2026-06-01 오전 10:00",
       "업종제한": "",
+      "낙찰자": "",
+      "낙찰자 연락처": "",
       "원문링크": "https://example.com/B"
     });
   });
@@ -44,6 +46,7 @@ describe("CSV exporter", () => {
     ]);
 
     expect(csv.split("\n")[0]).toBe(EXPORT_COLUMNS.join(","));
+    expect(csv.split("\n")[0]).toContain("낙찰자,낙찰자 연락처");
     expect(csv).toContain("\"행정복지센터 안내 장비, 구매\"");
     expect(csv).toContain("\"120,000,000\"");
   });

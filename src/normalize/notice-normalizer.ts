@@ -1,4 +1,4 @@
-import type { NormalizedNotice, RawNaraNotice } from "../nara/types.js";
+import type { NormalizedNotice, NoticeWinner, RawNaraNotice } from "../nara/types.js";
 import { classifyNoticeType } from "../classify/notice-type-classifier.js";
 import {
   normalizeDate,
@@ -26,6 +26,7 @@ export function normalizeNotice(raw: RawNaraNotice, options: NormalizeNoticeOpti
     industryRestriction: normalizeIndustryRestriction(raw),
     sourceUrl: normalizeNoticeSourceUrl(raw),
     documentUrl: normalizeNoticeDocumentUrl(raw),
+    winner: normalizeNoticeWinner(raw),
     raw
   };
 }
@@ -39,6 +40,47 @@ export function normalizeNotices(
 
 function normalizeNoticeSourceUrl(raw: RawNaraNotice): string | undefined {
   return normalizeText(raw.sourceUrl) ?? normalizeText(raw.bidNtceDtlUrl) ?? normalizeText(raw.bidNtceUrl);
+}
+
+function normalizeNoticeWinner(raw: RawNaraNotice): NoticeWinner | undefined {
+  const companyName = readFirstText(raw, [
+    "sucsfbidCorpNm",
+    "sucsfbidEntrpsNm",
+    "sccssBidder",
+    "cntrctEntrpsNm",
+    "winnerCompanyName",
+    "winnerCorpNm"
+  ]);
+  const businessNumber = normalizeBusinessNumber(
+    readFirstText(raw, ["sucsfbidCorpBizno", "sucsfbidCorpBzno", "sucsfbidBizno", "winnerBusinessNumber", "bizno"])
+  );
+  const phoneNumber = readFirstText(raw, ["sucsfbidCorpTelNo", "sucsfbidTelNo", "winnerPhoneNumber", "telNo"]);
+
+  if (!companyName && !businessNumber && !phoneNumber) {
+    return undefined;
+  }
+
+  return {
+    ...(companyName ? { companyName } : {}),
+    ...(businessNumber ? { businessNumber } : {}),
+    ...(phoneNumber ? { phoneNumber } : {})
+  };
+}
+
+function readFirstText(raw: RawNaraNotice, fields: string[]): string | undefined {
+  for (const field of fields) {
+    const value = normalizeText(raw[field]);
+    if (value) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
+
+function normalizeBusinessNumber(value: string | undefined): string | undefined {
+  const digits = value?.replace(/\D/g, "");
+  return digits || undefined;
 }
 
 function normalizeNoticeDocumentUrl(raw: RawNaraNotice): string | undefined {

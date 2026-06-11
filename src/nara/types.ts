@@ -16,6 +16,15 @@ export type RawNaraNotice = Record<string, unknown> & {
   bidNtceDtlUrl?: string;
   bidNtceUrl?: string;
   stdNtceDocUrl?: string;
+  sucsfbidCorpBizno?: string;
+  sucsfbidCorpNm?: string;
+  sucsfbidCorpTelNo?: string;
+};
+
+export type NoticeWinner = {
+  companyName?: string;
+  businessNumber?: string;
+  phoneNumber?: string;
 };
 
 export type NormalizedNotice = {
@@ -29,6 +38,7 @@ export type NormalizedNotice = {
   industryRestriction?: string;
   sourceUrl?: string;
   documentUrl?: string;
+  winner?: NoticeWinner;
   raw?: Record<string, unknown>;
 };
 
@@ -41,5 +51,7 @@ export type NoticeExportRow = {
   "예산": string;
   "마감일": string;
   "업종제한": string;
+  "낙찰자": string;
+  "낙찰자 연락처": string;
   "원문링크": string;
 };

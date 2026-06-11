@@ -18,6 +18,8 @@ describe("local web server API", () => {
       "예산",
       "마감일",
       "업종제한",
+      "낙찰자",
+      "낙찰자 연락처",
       "원문링크"
     ]);
     expect(response.body.notices).toHaveLength(22);
@@ -155,6 +157,77 @@ describe("local web server API", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
   });
 
+  it("enriches collected notice winner phone numbers from the procurement corporation store", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("getPrcrmntCorpBasicInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [{ bizno: "1111111111", corpNm: "낙찰건설", telNo: "02-1111-1111" }]
+              }
+            }
+          }
+        });
+      }
+
+      if (url.includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({ response: { header: { resultCode: "03", resultMsg: "NO_DATA" }, body: {} } });
+      }
+
+      if (url.includes("getBidPblancListInfoCnstwkPPSSrch")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "00", resultMsg: "정상" },
+            body: {
+              pageNo: 1,
+              numOfRows: 100,
+              totalCount: 1,
+              items: {
+                item: [
+                  {
+                    bidNtceNo: "20260500007",
+                    bidNtceNm: "행정복지센터 시설 보수",
+                    bsnsDivNm: "공사",
+                    ntceInsttNm: "OO시청",
+                    sucsfbidCorpNm: "낙찰건설",
+                    sucsfbidCorpBizno: "111-11-11111"
+                  }
+                ]
+              }
+            }
+          }
+        });
+      }
+
+      return responseJson({ response: { header: { resultCode: "03", resultMsg: "NO_DATA" }, body: {} } });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-05", apiKey: "sample-key" })
+      .expect(200);
+
+    const response = await request(app)
+      .post("/api/collect")
+      .send({ from: "2026-05-01", to: "2026-05-31", keyword: "행정복지센터", apiKey: "sample-key" })
+      .expect(200);
+
+    expect(response.body.notices[0].winner).toEqual({
+      companyName: "낙찰건설",
+      businessNumber: "1111111111",
+      phoneNumber: "02-1111-1111"
+    });
+    expect(response.body.rows[0]["낙찰자"]).toBe("낙찰건설");
+    expect(response.body.rows[0]["낙찰자 연락처"]).toBe("02-1111-1111");
+  });
+
   it("exports the posted notices as CSV", async () => {
     const app = await createWebApp({ enableVite: false });
     const sample = await request(app).get("/api/sample-notices").expect(200);
@@ -165,7 +238,9 @@ describe("local web server API", () => {
       .expect(200);
 
     expect(response.header["content-type"]).toContain("text/csv");
-    expect(response.text.split("\n")[0]).toBe("No.,공고번호,공고명,구분,기관명,예산,마감일,업종제한,원문링크");
+    expect(response.text.split("\n")[0]).toBe(
+      "No.,공고번호,공고명,구분,기관명,예산,마감일,업종제한,낙찰자,낙찰자 연락처,원문링크"
+    );
   });
 
   it("exports the posted notices as XLSX", async () => {
@@ -301,5 +376,5 @@ function responseJson(body: unknown) {
     ok: true,
     status: 200,
     json: async () => body
-  };
+  } as Response;
 }

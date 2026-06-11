@@ -28,10 +28,11 @@ export class ProcurementCorpStore {
     if (!this.db) {
       let count = 0;
       for (const item of corporations) {
-        if (!item.bizno) {
+        const bizno = normalizeBusinessNumber(item.bizno);
+        if (!bizno) {
           continue;
         }
-        this.memoryRows.set(item.bizno, item);
+        this.memoryRows.set(bizno, { ...item, bizno });
         count += 1;
       }
       return count;
@@ -69,11 +70,12 @@ export class ProcurementCorpStore {
     this.db.exec("BEGIN");
     try {
       for (const item of corporations) {
-        if (!item.bizno) {
+        const bizno = normalizeBusinessNumber(item.bizno);
+        if (!bizno) {
           continue;
         }
         statement.run(
-          item.bizno,
+          bizno,
           item.corpNm ?? "",
           item.ceoNm ?? "",
           item.adrs ?? "",
@@ -93,6 +95,38 @@ export class ProcurementCorpStore {
       this.db.exec("ROLLBACK");
       throw error;
     }
+  }
+
+  findByBusinessNumber(value: string): RawProcurementCorp | undefined {
+    const bizno = normalizeBusinessNumber(value);
+    if (!bizno) {
+      return undefined;
+    }
+
+    if (!this.db) {
+      return this.memoryRows.get(bizno);
+    }
+
+    return this.db
+      .prepare(
+        `
+        SELECT
+          bizno,
+          corp_nm AS corpNm,
+          ceo_nm AS ceoNm,
+          adrs,
+          dtl_adrs AS dtlAdrs,
+          rgn_nm AS rgnNm,
+          corp_bsns_div_nm AS corpBsnsDivNm,
+          industry_detail_summary AS industryDetailSummary,
+          tel_no AS telNo,
+          fax_no AS faxNo,
+          hmpg_adrs AS hmpgAdrs
+        FROM procurement_corps
+        WHERE bizno = ?
+      `
+      )
+      .get(bizno) as RawProcurementCorp | undefined;
   }
 
   listRows(options: { page?: number; pageSize?: number } = {}): ProcurementCorpPage {
@@ -210,4 +244,10 @@ function loadSqliteDatabaseSync(): (new (path: string) => SqliteDatabase) | unde
   } catch {
     return undefined;
   }
+}
+
+function normalizeBusinessNumber(value: unknown): string | undefined {
+  const text = typeof value === "string" ? value : undefined;
+  const digits = text?.replace(/\D/g, "");
+  return digits || undefined;
 }

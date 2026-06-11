@@ -18,6 +18,8 @@ type NoticeRow = {
   "예산": string;
   "마감일": string;
   "업종제한": string;
+  "낙찰자": string;
+  "낙찰자 연락처": string;
   "원문링크": string;
 };
 
@@ -47,6 +49,11 @@ type NormalizedNotice = {
   industryRestriction?: string;
   sourceUrl?: string;
   documentUrl?: string;
+  winner?: {
+    companyName?: string;
+    businessNumber?: string;
+    phoneNumber?: string;
+  };
   raw?: Record<string, unknown>;
 };
 
@@ -93,6 +100,8 @@ const noticeColumns: (keyof NoticeRow)[] = [
   "예산",
   "마감일",
   "업종제한",
+  "낙찰자",
+  "낙찰자 연락처",
   "원문링크"
 ];
 
@@ -315,7 +324,7 @@ export function App() {
     <main className="app-shell">
       <aside className="sidebar" aria-label="메뉴">
         <div className="brand">
-          <h1>nara-notice-collector</h1>
+          <h1>나라장터 공고 컬렉터</h1>
           <p>나라장터 로컬 수집 도구</p>
         </div>
         <nav className="side-menu">

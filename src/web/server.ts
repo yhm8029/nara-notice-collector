@@ -41,7 +41,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
 
   app.get("/api/sample-notices", async (_request, response) => {
     const notices = normalizeNotices(await loadSampleRawNotices());
-    response.json(toNoticePayload(notices));
+    response.json(toNoticePayload(notices, corpStore));
   });
 
   app.post("/api/collect", async (request, response) => {
@@ -66,9 +66,9 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     }
 
     try {
-      const client = new NaraApiClient({ apiKey: resolvedApiKey });
+      const client = new NaraApiClient({ apiKey: resolvedApiKey, fetch: options.fetch });
       const notices = normalizeNotices(await client.searchNotices({ from, to, keyword }));
-      response.json(toNoticePayload(notices));
+      response.json(toNoticePayload(notices, corpStore));
     } catch (error) {
       response.status(502).json({ error: error instanceof Error ? error.message : String(error) });
     }
@@ -372,11 +372,35 @@ function escapeHtml(value: string): string {
     .replaceAll("'", "&#39;");
 }
 
-function toNoticePayload(notices: NormalizedNotice[]) {
+function toNoticePayload(notices: NormalizedNotice[], corpStore?: ProcurementCorpStore) {
+  const enrichedNotices = corpStore ? enrichNoticeWinners(notices, corpStore) : notices;
   return {
-    notices,
-    rows: buildNoticeExportRows(notices)
+    notices: enrichedNotices,
+    rows: buildNoticeExportRows(enrichedNotices)
   };
+}
+
+function enrichNoticeWinners(notices: NormalizedNotice[], corpStore: ProcurementCorpStore): NormalizedNotice[] {
+  return notices.map((notice) => {
+    const winner = notice.winner;
+    if (!winner?.businessNumber || winner.phoneNumber) {
+      return notice;
+    }
+
+    const corporation = corpStore.findByBusinessNumber(winner.businessNumber);
+    if (!corporation?.telNo) {
+      return notice;
+    }
+
+    return {
+      ...notice,
+      winner: {
+        ...winner,
+        companyName: winner.companyName ?? corporation.corpNm,
+        phoneNumber: corporation.telNo
+      }
+    };
+  });
 }
 
 function readPostedNotices(body: unknown): NormalizedNotice[] {

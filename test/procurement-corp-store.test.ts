@@ -34,4 +34,22 @@ describe("ProcurementCorpStore", () => {
     expect(secondPage.rows[0]?.["사업자등록번호"]).toBe("1000000020");
     expect(firstPage.rows[0]?.["업종상세"]).toBe("software business(1426, normal)");
   });
+
+  it("finds a corporation by business number for notice winner enrichment", () => {
+    const store = new ProcurementCorpStore(":memory:");
+    store.upsertMany([
+      {
+        bizno: "1111111111",
+        corpNm: "낙찰건설",
+        telNo: "02-1111-1111"
+      }
+    ]);
+
+    expect(store.findByBusinessNumber("111-11-11111")).toMatchObject({
+      bizno: "1111111111",
+      corpNm: "낙찰건설",
+      telNo: "02-1111-1111"
+    });
+    expect(store.findByBusinessNumber("222-22-22222")).toBeUndefined();
+  });
 });
