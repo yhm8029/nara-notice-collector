@@ -31,6 +31,7 @@ export type ProcurementCorpDateRangeOptions = {
 export type ProcurementCorpAutoMonthlyOptions = {
   from: string;
   to: string;
+  ranges?: MonthRange[];
   workerCount?: number;
   monthsPerWorker?: number;
   inqryDiv?: string;
@@ -43,6 +44,15 @@ export type ProcurementCorpAutoMonthlyOptions = {
 export type MonthRange = {
   from: string;
   to: string;
+};
+
+export type ProcurementCorpFailedRange = MonthRange & {
+  error: string;
+};
+
+export type ProcurementCorpCollectionResult = {
+  corporations: RawProcurementCorp[];
+  failedRanges: ProcurementCorpFailedRange[];
 };
 
 export type RawProcurementCorp = Record<string, unknown> & {
@@ -249,14 +259,17 @@ export class NaraProcurementCorpClient {
     return enriched;
   }
 
-  async collectAutoMonthly(options: ProcurementCorpAutoMonthlyOptions): Promise<RawProcurementCorp[]> {
-    const batches = buildMonthlyCorpCollectionBatches({
-      from: options.from,
-      to: options.to,
-      monthsPerBatch: options.monthsPerWorker ?? 10
-    });
+  async collectAutoMonthly(options: ProcurementCorpAutoMonthlyOptions): Promise<ProcurementCorpCollectionResult> {
+    const batches = options.ranges
+      ? chunkMonthRanges(options.ranges, options.monthsPerWorker ?? 10)
+      : buildMonthlyCorpCollectionBatches({
+          from: options.from,
+          to: options.to,
+          monthsPerBatch: options.monthsPerWorker ?? 10
+        });
     const workerCount = clampWorkerCount(options.workerCount ?? 5);
     const collected: RawProcurementCorp[] = [];
+    const failedRanges: ProcurementCorpFailedRange[] = [];
     const pendingFlush: RawProcurementCorp[] = [];
     const flushSize = Math.max(1, Math.floor(options.flushSize ?? 50));
     let nextBatchIndex = 0;
@@ -280,13 +293,26 @@ export class NaraProcurementCorpClient {
           if (options.signal?.aborted) {
             break;
           }
-          const rangeItems = await this.collectByDateRange({
-            from: range.from,
-            to: range.to,
-            inqryDiv: options.inqryDiv ?? "2",
-            numOfRows: options.numOfRows ?? 100,
-            signal: options.signal
-          });
+          let rangeItems: RawProcurementCorp[];
+          try {
+            rangeItems = await this.collectByDateRange({
+              from: range.from,
+              to: range.to,
+              inqryDiv: options.inqryDiv ?? "2",
+              numOfRows: options.numOfRows ?? 100,
+              signal: options.signal
+            });
+          } catch (error) {
+            if (isSkippableInputRangeError(error)) {
+              failedRanges.push({
+                from: range.from,
+                to: range.to,
+                error: error.resultMsg
+              });
+              continue;
+            }
+            throw error;
+          }
           collected.push(...rangeItems);
           pendingFlush.push(...rangeItems);
           await flushPending();
@@ -296,7 +322,10 @@ export class NaraProcurementCorpClient {
 
     await Promise.all(Array.from({ length: Math.min(workerCount, batches.length) }, () => runWorker()));
     await flushPending(true);
-    return dedupeByBusinessNumber(collected);
+    return {
+      corporations: dedupeByBusinessNumber(collected),
+      failedRanges: failedRanges.sort((left, right) => left.from.localeCompare(right.from))
+    };
   }
 
   buildBusinessNumberLookupUrl(
@@ -520,7 +549,7 @@ function throwIfApiError(payload: unknown): void {
   }
 
   const resultMsg = readString(header?.resultMsg) ?? "Unknown public data API error";
-  throw new Error(`Nara procurement corp API returned ${resultCode}: ${resultMsg}`);
+  throw new NaraProcurementCorpApiError(resultCode, resultMsg);
 }
 
 function isNoDataResult(payload: unknown): boolean {
@@ -545,6 +574,15 @@ function readResponseBody(payload: unknown): Record<string, unknown> | undefined
 
 function normalizeBusinessNumber(value: string): string {
   return value.replace(/\D/g, "");
+}
+
+function chunkMonthRanges(ranges: MonthRange[], monthsPerBatch: number): MonthRange[][] {
+  const size = Math.max(1, Math.floor(monthsPerBatch));
+  const batches: MonthRange[][] = [];
+  for (let index = 0; index < ranges.length; index += size) {
+    batches.push(ranges.slice(index, index + size));
+  }
+  return batches;
 }
 
 function dedupeByBusinessNumber(corporations: RawProcurementCorp[]): RawProcurementCorp[] {
@@ -641,4 +679,17 @@ function shouldRetryResponse(response: Response): boolean {
 
 function sleep(ms: number): Promise<void> {
   return ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+}
+
+class NaraProcurementCorpApiError extends Error {
+  constructor(
+    readonly resultCode: string,
+    readonly resultMsg: string
+  ) {
+    super(`Nara procurement corp API returned ${resultCode}: ${resultMsg}`);
+  }
+}
+
+function isSkippableInputRangeError(error: unknown): error is NaraProcurementCorpApiError {
+  return error instanceof NaraProcurementCorpApiError && error.resultCode === "07";
 }

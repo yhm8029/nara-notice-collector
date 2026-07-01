@@ -76,11 +76,18 @@ type ProcurementCorpPagePayload = {
 
 type ProcurementCorpCollectionStatus = {
   error?: string;
+  failedRanges: ProcurementCorpFailedRange[];
   finishedAt?: string;
   running: boolean;
   savedCount: number;
   startedAt?: string;
   stopRequested: boolean;
+};
+
+type ProcurementCorpFailedRange = {
+  from: string;
+  to: string;
+  error: string;
 };
 
 type ViewerUrlPayload = {
@@ -135,6 +142,7 @@ export function App() {
   const [corpTotalCount, setCorpTotalCount] = useState(0);
   const [corpTotalPages, setCorpTotalPages] = useState(1);
   const [corpStatus, setCorpStatus] = useState<ProcurementCorpCollectionStatus>({
+    failedRanges: [],
     running: false,
     savedCount: 0,
     stopRequested: false
@@ -206,6 +214,14 @@ export function App() {
   }
 
   async function startProcurementCorpCollection() {
+    await startProcurementCorpCollectionWithRanges();
+  }
+
+  async function retryFailedProcurementCorpRanges() {
+    await startProcurementCorpCollectionWithRanges(corpStatus.failedRanges);
+  }
+
+  async function startProcurementCorpCollectionWithRanges(retryRanges?: ProcurementCorpFailedRange[]) {
     setLoading("corp-collect");
     setError("");
     try {
@@ -215,6 +231,7 @@ export function App() {
         body: JSON.stringify({
           apiKey: corpApiKey,
           inqryDiv: corpInqryDiv,
+          retryRanges,
           workerCount: corpWorkerCount
         })
       });
@@ -287,6 +304,33 @@ export function App() {
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = `nara-notices.${format}`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setError(toErrorMessage(error));
+    } finally {
+      setLoading("");
+    }
+  }
+
+  async function downloadProcurementCorps(format: "csv" | "xlsx") {
+    if (corpTotalCount === 0) {
+      setError("먼저 사업자 데이터를 수집하세요.");
+      return;
+    }
+
+    setLoading(`corp-${format}`);
+    setError("");
+    try {
+      const response = await fetch(`/api/procurement-corps/export?format=${format}`);
+      if (!response.ok) {
+        throw new Error(await readError(response));
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `procurement-corps.${format}`;
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
@@ -490,6 +534,16 @@ export function App() {
             <h2>사업자 조회</h2>
             <p>월별 자동 분할로 나라장터 조달업체 기본정보를 수집합니다.</p>
           </div>
+          <div className="topbar-actions">
+            <button type="button" onClick={() => void downloadProcurementCorps("csv")} disabled={loading !== "" || corpTotalCount === 0}>
+              <Download size={18} />
+              사업자 CSV
+            </button>
+            <button type="button" onClick={() => void downloadProcurementCorps("xlsx")} disabled={loading !== "" || corpTotalCount === 0}>
+              <FileSpreadsheet size={18} />
+              사업자 Excel
+            </button>
+          </div>
         </header>
 
         <section className="controls corp-controls" aria-label="사업자 번호 수집">
@@ -531,6 +585,13 @@ export function App() {
           <button type="button" onClick={stopProcurementCorpCollection} disabled={!corpStatus.running}>
             멈춤
           </button>
+          <button
+            type="button"
+            onClick={() => void retryFailedProcurementCorpRanges()}
+            disabled={loading !== "" || corpStatus.running || corpStatus.failedRanges.length === 0}
+          >
+            실패 월 재시도
+          </button>
           <p className="control-note">월별로 쪼개고 10개월 단위 작업을 최대 5개 워커가 병렬 처리합니다. 50개마다 DB에 저장하고 화면을 갱신합니다. 429가 나면 워커 수를 낮추세요.</p>
         </section>
 
@@ -547,6 +608,25 @@ export function App() {
             <span>상태</span>
             <strong>{corpStatus.running ? "수집중" : corpStatus.stopRequested ? "중지됨" : "대기"}</strong>
           </div>
+          <div>
+            <span>실패 월</span>
+            <strong>{corpStatus.failedRanges.length}</strong>
+          </div>
+        </section>
+
+        <section className="failed-ranges" aria-label="실패 월">
+          <h3>실패 월</h3>
+          {corpStatus.failedRanges.length === 0 ? (
+            <p>기록된 실패 월이 없습니다.</p>
+          ) : (
+            <ul>
+              {corpStatus.failedRanges.map((range) => (
+                <li key={`${range.from}-${range.to}`}>
+                  {range.from} ~ {range.to}: {range.error}
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="table-wrap" aria-label="사업자 목록">

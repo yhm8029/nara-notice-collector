@@ -204,6 +204,33 @@ select {
   font-size: 22px;
 }
 
+.failed-ranges {
+  margin: 0 0 14px;
+  border: 1px solid #dde2ea;
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #ffffff;
+}
+
+.failed-ranges h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.failed-ranges p,
+.failed-ranges ul {
+  margin: 0;
+  color: #5f6673;
+  font-size: 13px;
+}
+
+.failed-ranges ul {
+  display: grid;
+  gap: 6px;
+  padding-left: 18px;
+}
+
 .error {
   margin-top: 12px;
   border: 1px solid #f0b8b8;

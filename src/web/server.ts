@@ -4,12 +4,21 @@ import { createServer as createViteServer, type ViteDevServer } from "vite";
 import { exportNoticesToCsv } from "../export/csv-exporter.js";
 import { exportNoticesToExcelBuffer } from "../export/excel-exporter.js";
 import { NaraApiClient } from "../nara/client.js";
-import { NaraProcurementCorpClient, toProcurementCorpRows } from "../nara/procurement-corp-client.js";
+import {
+  NaraProcurementCorpClient,
+  toProcurementCorpRows,
+  type MonthRange,
+  type ProcurementCorpFailedRange
+} from "../nara/procurement-corp-client.js";
 import { ProcurementCorpStore } from "../nara/procurement-corp-store.js";
 import type { NormalizedNotice } from "../nara/types.js";
 import { loadSampleRawNotices } from "../nara/sample-client.js";
 import { normalizeNotices } from "../normalize/notice-normalizer.js";
 import { buildNoticeExportRows } from "../export/csv-exporter.js";
+import {
+  exportProcurementCorpsToCsv,
+  exportProcurementCorpsToExcelBuffer
+} from "../export/procurement-corp-exporter.js";
 import { buildSynapViewerUrl } from "./synap-viewer.js";
 import { isG2bAttachmentDownloadUrl, resolveG2bSynapViewerUrl } from "./g2b-synap-resolver.js";
 
@@ -22,6 +31,7 @@ export type CreateWebAppOptions = {
 type ProcurementCorpCollectionJob = {
   abortController: AbortController;
   error?: string;
+  failedRanges: ProcurementCorpFailedRange[];
   finishedAt?: string;
   running: boolean;
   savedCount: number;
@@ -93,7 +103,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
       const client = new NaraProcurementCorpClient({ apiKey: resolvedApiKey, fetch: options.fetch });
       const enrichedCorporations: Awaited<ReturnType<NaraProcurementCorpClient["enrichCorporationsWithIndustryDetails"]>> =
         [];
-      const corporations = await client.collectAutoMonthly({
+      const collection = await client.collectAutoMonthly({
         from: from ?? "2000-01-01",
         to: to ?? formatToday(),
         inqryDiv,
@@ -107,10 +117,12 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
           corpStore.upsertMany(enriched);
         }
       });
+      const corporations = collection.corporations;
       const responseCorporations = enrichedCorporations.length > 0 ? enrichedCorporations : corporations;
       response.json({
         corporations: responseCorporations,
-        rows: toProcurementCorpRows(responseCorporations)
+        rows: toProcurementCorpRows(responseCorporations),
+        failedRanges: collection.failedRanges
       });
     } catch (error) {
       response.status(502).json({ error: error instanceof Error ? error.message : String(error) });
@@ -118,9 +130,10 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
   });
 
   app.post("/api/procurement-corps/start", (request, response) => {
-    const { apiKey, inqryDiv, workerCount } = request.body as {
+    const { apiKey, inqryDiv, retryRanges, workerCount } = request.body as {
       apiKey?: string;
       inqryDiv?: string;
+      retryRanges?: MonthRange[];
       workerCount?: number;
     };
     if (corpCollectionJob?.running) {
@@ -137,6 +150,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
     const abortController = new AbortController();
     corpCollectionJob = {
       abortController,
+      failedRanges: [],
       running: true,
       savedCount: 0,
       startedAt: new Date().toISOString(),
@@ -148,6 +162,7 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
       fetchImpl: options.fetch,
       inqryDiv,
       job: corpCollectionJob,
+      retryRanges: normalizeRetryRanges(retryRanges),
       store: corpStore,
       workerCount
     });
@@ -165,6 +180,26 @@ export async function createWebApp(options: CreateWebAppOptions = {}): Promise<E
 
   app.get("/api/procurement-corps/status", (_request, response) => {
     response.json(toProcurementCorpCollectionStatus(corpCollectionJob));
+  });
+
+  app.get("/api/procurement-corps/export", async (request, response) => {
+    const format = request.query.format === "xlsx" ? "xlsx" : "csv";
+    const rows = corpStore.listAllRows();
+
+    if (format === "csv") {
+      response.setHeader("content-type", "text/csv; charset=utf-8");
+      response.setHeader("content-disposition", 'attachment; filename="procurement-corps.csv"');
+      response.send(exportProcurementCorpsToCsv(rows));
+      return;
+    }
+
+    const buffer = await exportProcurementCorpsToExcelBuffer(rows);
+    response.setHeader(
+      "content-type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    response.setHeader("content-disposition", 'attachment; filename="procurement-corps.xlsx"');
+    response.send(buffer);
   });
 
   app.get("/api/procurement-corps", (request, response) => {
@@ -437,14 +472,16 @@ async function runProcurementCorpCollection(input: {
   fetchImpl?: typeof fetch;
   inqryDiv?: string;
   job: ProcurementCorpCollectionJob;
+  retryRanges?: MonthRange[];
   store: ProcurementCorpStore;
   workerCount?: number;
 }): Promise<void> {
   try {
     const client = new NaraProcurementCorpClient({ apiKey: input.apiKey, fetch: input.fetchImpl });
-    await client.collectAutoMonthly({
-      from: "2000-01-01",
-      to: formatToday(),
+    const ranges = input.retryRanges;
+    const collection = await client.collectAutoMonthly({
+      from: ranges?.[0]?.from ?? "2000-01-01",
+      to: ranges?.[ranges.length - 1]?.to ?? formatToday(),
       flushSize: 50,
       inqryDiv: input.inqryDiv,
       monthsPerWorker: 10,
@@ -455,9 +492,11 @@ async function runProcurementCorpCollection(input: {
         });
         input.job.savedCount += input.store.upsertMany(enriched);
       },
+      ranges,
       signal: input.job.abortController.signal,
       workerCount: input.workerCount ?? 2
     });
+    input.job.failedRanges = collection.failedRanges;
   } catch (error) {
     input.job.error = error instanceof Error ? error.message : String(error);
   } finally {
@@ -469,12 +508,34 @@ async function runProcurementCorpCollection(input: {
 function toProcurementCorpCollectionStatus(job: ProcurementCorpCollectionJob | undefined) {
   return {
     error: job?.error,
+    failedRanges: job?.failedRanges ?? [],
     finishedAt: job?.finishedAt,
     running: job?.running ?? false,
     savedCount: job?.savedCount ?? 0,
     startedAt: job?.startedAt,
     stopRequested: job?.stopRequested ?? false
   };
+}
+
+function normalizeRetryRanges(value: unknown): MonthRange[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+
+  const ranges = value
+    .map((item) => {
+      if (!item || typeof item !== "object") {
+        return undefined;
+      }
+      const range = item as { from?: unknown; to?: unknown };
+      if (typeof range.from !== "string" || typeof range.to !== "string") {
+        return undefined;
+      }
+      return { from: range.from, to: range.to };
+    })
+    .filter((item): item is MonthRange => Boolean(item));
+
+  return ranges.length > 0 ? ranges : undefined;
 }
 
 function formatToday(): string {

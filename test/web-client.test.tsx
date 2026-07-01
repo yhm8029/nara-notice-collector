@@ -17,6 +17,9 @@ describe("web client", () => {
     expect(html).toContain("업종상세");
     expect(html).toContain("워커 수");
     expect(html).toContain("최대 5개");
+    expect(html).toContain("사업자 CSV");
+    expect(html).toContain("사업자 Excel");
+    expect(html).toContain("실패 월");
     expect(html).toContain("공고문");
     expect(html).toContain("낙찰자");
     expect(html).toContain("낙찰자 연락처");

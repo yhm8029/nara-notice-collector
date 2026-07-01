@@ -449,7 +449,7 @@ describe("NaraProcurementCorpClient", () => {
       }
     });
 
-    const corporations = await client.collectAutoMonthly({
+    const result = await client.collectAutoMonthly({
       from: "2026-01-01",
       to: "2026-03-31",
       workerCount: 5,
@@ -461,7 +461,74 @@ describe("NaraProcurementCorpClient", () => {
       "202602010000",
       "202603010000"
     ]);
-    expect(corporations.map((corp) => corp.bizno)).toEqual(["1111111111", "2222222222"]);
+    expect(result.corporations.map((corp) => corp.bizno)).toEqual(["1111111111", "2222222222"]);
+    expect(result.failedRanges).toEqual([]);
+  });
+
+  it("records input-range failures by month and continues auto collecting later months", async () => {
+    const requestedUrls: string[] = [];
+    const client = new NaraProcurementCorpClient({
+      apiKey: "sample-key",
+      requestDelayMs: 0,
+      fetch: async (url) => {
+        requestedUrls.push(String(url));
+        const begin = new URL(String(url)).searchParams.get("inqryBgnDt");
+        if (begin === "202602010000") {
+          return new Response(
+            JSON.stringify({
+              response: {
+                header: { resultCode: "07", resultMsg: "입력범위값 초과 에러" },
+                body: {}
+              }
+            }),
+            { status: 200, headers: { "content-type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({
+            response: {
+              header: { resultCode: "00", resultMsg: "정상" },
+              body: {
+                pageNo: 1,
+                numOfRows: 100,
+                totalCount: 1,
+                items: {
+                  item: [
+                    {
+                      bizno: begin === "202601010000" ? "1111111111" : "3333333333",
+                      corpNm: begin === "202601010000" ? "1월회사" : "3월회사"
+                    }
+                  ]
+                }
+              }
+            }
+          }),
+          { status: 200, headers: { "content-type": "application/json" } }
+        );
+      }
+    });
+
+    const result = await client.collectAutoMonthly({
+      from: "2026-01-01",
+      to: "2026-03-31",
+      workerCount: 1,
+      monthsPerWorker: 10
+    });
+
+    expect(requestedUrls.map((url) => new URL(url).searchParams.get("inqryBgnDt"))).toEqual([
+      "202601010000",
+      "202602010000",
+      "202603010000"
+    ]);
+    expect(result.corporations.map((corp) => corp.bizno)).toEqual(["1111111111", "3333333333"]);
+    expect(result.failedRanges).toEqual([
+      {
+        from: "2026-02-01",
+        to: "2026-02-28",
+        error: "입력범위값 초과 에러"
+      }
+    ]);
   });
 
   it("flushes collected corporations every 50 items while auto collecting", async () => {
@@ -491,7 +558,7 @@ describe("NaraProcurementCorpClient", () => {
         )
     });
 
-    await client.collectAutoMonthly({
+    const result = await client.collectAutoMonthly({
       from: "2026-01-01",
       to: "2026-01-31",
       workerCount: 1,
@@ -506,6 +573,7 @@ describe("NaraProcurementCorpClient", () => {
     expect(flushed[0]?.[0]).toBe("1000000000");
     expect(flushed[0]?.[49]).toBe("1000000049");
     expect(flushed[1]).toEqual(["1000000050", "1000000051"]);
+    expect(result.failedRanges).toEqual([]);
   });
 
   it("stops auto collection when the abort signal is triggered", async () => {
@@ -534,7 +602,7 @@ describe("NaraProcurementCorpClient", () => {
       }
     });
 
-    await client.collectAutoMonthly({
+    const result = await client.collectAutoMonthly({
       from: "2026-01-01",
       to: "2026-03-31",
       workerCount: 1,
@@ -542,6 +610,7 @@ describe("NaraProcurementCorpClient", () => {
     });
 
     expect(calls).toBe(1);
+    expect(result.failedRanges).toEqual([]);
   });
 
   it("treats the public data no-data result as an empty corporation list", async () => {

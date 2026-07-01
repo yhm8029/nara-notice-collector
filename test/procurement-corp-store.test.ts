@@ -52,4 +52,17 @@ describe("ProcurementCorpStore", () => {
     });
     expect(store.findByBusinessNumber("222-22-22222")).toBeUndefined();
   });
+
+  it("returns all stored corporation rows for export with sequential indexes", () => {
+    const store = new ProcurementCorpStore(":memory:");
+    store.upsertMany(
+      Array.from({ length: 3 }, (_, index) => ({
+        bizno: String(1111111111 + index),
+        corpNm: `업체${index + 1}`
+      }))
+    );
+
+    expect(store.listAllRows().map((row) => row["No."])).toEqual([1, 2, 3]);
+    expect(store.listAllRows().map((row) => row["업체명"])).toEqual(["업체1", "업체2", "업체3"]);
+  });
 });

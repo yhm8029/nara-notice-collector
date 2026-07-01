@@ -187,6 +187,44 @@ export class ProcurementCorpStore {
     };
   }
 
+  listAllRows(): ProcurementCorpRow[] {
+    if (!this.db) {
+      const corporations = [...this.memoryRows.values()].sort((left, right) =>
+        (left.bizno ?? "").localeCompare(right.bizno ?? "")
+      );
+      return toProcurementCorpRows(corporations).map((row, index) => ({
+        ...row,
+        "No.": index + 1
+      }));
+    }
+
+    const rows = this.db
+      .prepare(
+        `
+        SELECT
+          bizno,
+          corp_nm AS corpNm,
+          ceo_nm AS ceoNm,
+          adrs,
+          dtl_adrs AS dtlAdrs,
+          rgn_nm AS rgnNm,
+          corp_bsns_div_nm AS corpBsnsDivNm,
+          industry_detail_summary AS industryDetailSummary,
+          tel_no AS telNo,
+          fax_no AS faxNo,
+          hmpg_adrs AS hmpgAdrs
+        FROM procurement_corps
+        ORDER BY bizno
+      `
+      )
+      .all() as RawProcurementCorp[];
+
+    return toProcurementCorpRows(rows).map((row, index) => ({
+      ...row,
+      "No.": index + 1
+    }));
+  }
+
   private initializeSqlite(): void {
     if (!this.db) {
       return;

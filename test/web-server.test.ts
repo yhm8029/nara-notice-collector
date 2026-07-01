@@ -157,6 +157,99 @@ describe("local web server API", () => {
     expect(String(fetchImpl.mock.calls[0]?.[0])).toContain("inqryEndDt=202601312359");
   });
 
+  it("keeps failed procurement corporation months in collection status", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("getPrcrmntCorpBasicInfo02")) {
+        return responseJson({
+          response: {
+            header: { resultCode: "07", resultMsg: "입력범위값 초과 에러" },
+            body: {}
+          }
+        });
+      }
+
+      return responseJson({ response: { header: { resultCode: "03", resultMsg: "NO_DATA" }, body: {} } });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    await request(app)
+      .post("/api/procurement-corps/start")
+      .send({
+        apiKey: "sample-key",
+        retryRanges: [{ from: "2026-02-01", to: "2026-02-28" }]
+      })
+      .expect(200);
+
+    const status = await waitForProcurementCorpJob(app);
+
+    expect(status.failedRanges).toEqual([
+      {
+        from: "2026-02-01",
+        to: "2026-02-28",
+        error: "입력범위값 초과 에러"
+      }
+    ]);
+    expect(status.error).toBeUndefined();
+  });
+
+  it("exports all stored procurement corporations as CSV with Korean headers", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("getPrcrmntCorpIndstrytyInfo02")) {
+        return responseJson({ response: { header: { resultCode: "03", resultMsg: "NO_DATA" }, body: {} } });
+      }
+
+      return responseJson({
+        response: {
+          header: { resultCode: "00", resultMsg: "정상" },
+          body: {
+            pageNo: 1,
+            numOfRows: 100,
+            totalCount: 1,
+            items: {
+              item: [
+                {
+                  bizno: "1111111111",
+                  corpNm: "낙찰건설",
+                  ceoNm: "대표일",
+                  adrs: "서울특별시 중구",
+                  dtlAdrs: "1층",
+                  telNo: "02-1111-1111"
+                }
+              ]
+            }
+          }
+        }
+      });
+    });
+    const app = await createWebApp({ enableVite: false, fetch: fetchImpl });
+
+    await request(app)
+      .post("/api/procurement-corps/collect")
+      .send({ from: "2026-06-01", to: "2026-06-30", apiKey: "sample-key" })
+      .expect(200);
+
+    const response = await request(app).get("/api/procurement-corps/export?format=csv").expect(200);
+
+    expect(response.header["content-type"]).toContain("text/csv");
+    expect(response.text.split("\n")[0]).toBe(
+      "번호,사업자등록번호,업체명,대표자명,주소,상세주소,지역명,업종/업무구분,업종상세,전화번호,팩스번호,홈페이지주소"
+    );
+    expect(response.text).toContain("낙찰건설");
+  });
+
+  it("exports all stored procurement corporations as XLSX", async () => {
+    const app = await createWebApp({ enableVite: false });
+
+    const response = await request(app).get("/api/procurement-corps/export?format=xlsx").expect(200);
+
+    expect(response.header["content-type"]).toContain(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    expect(Number(response.header["content-length"])).toBeGreaterThan(1000);
+  });
+
   it("enriches collected notice winner phone numbers from the procurement corporation store", async () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -377,4 +470,16 @@ function responseJson(body: unknown) {
     status: 200,
     json: async () => body
   } as Response;
+}
+
+async function waitForProcurementCorpJob(app: Awaited<ReturnType<typeof createWebApp>>) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const response = await request(app).get("/api/procurement-corps/status").expect(200);
+    if (!response.body.running) {
+      return response.body;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  throw new Error("Timed out waiting for procurement corporation collection job.");
 }
